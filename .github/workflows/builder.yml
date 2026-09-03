@@ -30,9 +30,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
+          VERSION=2026.7.2
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Latest stable Home Assistant: ${VERSION}"
-          VERSION=2026.7.2
+          
 
       - name: Checkout official Home Assistant core
         uses: actions/checkout@v4
