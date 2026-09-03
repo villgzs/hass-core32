@@ -3,25 +3,23 @@ name: Build 32-bit Home Assistant
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 4 * * *"   # minden nap 04:00 UTC-kor ellenőrzi a legfrissebb stable-t
+    - cron: "0 4 * * *"
   push:
     branches:
       - main
-
+      
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: villgzs/hass-core32
 
 jobs:
-  build:
-    name: Build armv7 + armv6 multi-arch
+  prepare:
+    name: Prepare source
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
+    outputs:
+      version: ${{ steps.ha.outputs.version }}
     steps:
-      - name: Checkout this repository (for the Dockerfile)
+      - name: Checkout this repository (a te Dockerfile-od miatt)
         uses: actions/checkout@v4
         with:
           path: build-repo
@@ -42,11 +40,34 @@ jobs:
           ref: ${{ steps.ha.outputs.version }}
           path: ha-core
 
-      - name: Replace Dockerfile with 32-bit version
+      - name: Replace Dockerfile with your 32-bit version
         run: |
+          echo "=== A te Dockerfile-od másolása ==="
           cp build-repo/hass-core32/Dockerfile ha-core/Dockerfile
-          echo "Dockerfile replaced successfully"
+          echo "Kész. A használt Dockerfile:"
           ls -la ha-core/Dockerfile
+          head -n 15 ha-core/Dockerfile
+
+      - name: Upload prepared source
+        uses: actions/upload-artifact@v4
+        with:
+          name: ha-core-prepared
+          path: ha-core
+          retention-days: 1
+
+  build-armv7:
+    name: Build arm/v7
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download prepared source
+        uses: actions/download-artifact@v4
+        with:
+          name: ha-core-prepared
+          path: ha-core
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -62,7 +83,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push arm/v7
-        id: build-v7
         uses: docker/build-push-action@v6
         with:
           context: ha-core
@@ -70,12 +90,38 @@ jobs:
           platforms: linux/arm/v7
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7
+          provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: false
+
+  build-armv6:
+    name: Build arm/v6
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download prepared source
+        uses: actions/download-artifact@v4
+        with:
+          name: ha-core-prepared
+          path: ha-core
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push arm/v6
-        id: build-v6
         uses: docker/build-push-action@v6
         with:
           context: ha-core
@@ -83,23 +129,39 @@ jobs:
           platforms: linux/arm/v6
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6
+          provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: false
 
-      - name: Create and push multi-arch manifest
+  create-manifest:
+    name: Create multi-arch manifest
+    needs: [prepare, build-armv7, build-armv6]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch image
         run: |
+          echo "Összefűzés: armv7 + armv6 → multi-arch"
           docker buildx imagetools create \
             --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ha.outputs.version }} \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }} \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7 \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6
 
-          echo "Multi-arch image created:"
-          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ha.outputs.version }}"
+          echo ""
+          echo "Kész image-ek:"
+          echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }}"
 
-      - name: Cleanup temporary tags
-        run: |
-          # A tmp tag-eket nem muszáj törölni, de szebb ha eltüntetjük
-          echo "Temporary tags left for now (can be deleted manually if wanted)"
