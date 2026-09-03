@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 4 * * *"   # minden nap 04:00 UTC-kor ellenőrzi a legfrissebb stable-t
+  push:
+    branches:
+      - main
 
 env:
   REGISTRY: ghcr.io
