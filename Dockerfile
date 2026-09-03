@@ -55,18 +55,41 @@ RUN \
 #
 
 COPY requirements_all.txt home_assistant_frontend-* home_assistant_intents-* homeassistant/
-RUN \
+
 #    apk add --no-cache --virtual .build-deps autoconf cmake make ninja gcc g++ musl-dev rust cargo linux-headers libffi-dev jpeg-dev zlib-dev freetype-dev ffmpeg-dev pkgconf gfortran  openblas-dev libxml2-dev libxslt-dev mariadb-dev postgresql-dev glib-dev openssl-dev\
 #   && apk add --no-cache ffmpeg-libs libavc1394 openblas libgfortran libxml2 libxslt mariadb-connector-c-dev postgresql-libs\
-    apk add --no-cache --virtual .build-deps autoconf cmake make ninja gcc g++ musl-dev rust cargo linux-headers libffi-dev jpeg-dev zlib-dev freetype-dev ffmpeg-dev pkgconf gfortran openblas-dev libxml2-dev libxslt-dev mariadb-dev postgresql-dev glib-dev openssl-dev mariadb-connector-c-dev \
+RUN \
+    apk add --no-cache --virtual .build-deps autoconf cmake make ninja gcc g++ \
+        musl-dev rust cargo linux-headers libffi-dev jpeg-dev zlib-dev freetype-dev ffmpeg-dev\
+        pkgconf gfortran openblas-dev libxml2-dev libxslt-dev mariadb-dev postgresql-dev glib-dev\
+        openssl-dev mariadb-connector-c-dev \
     && apk add --no-cache ffmpeg-libs libavc1394 openblas libgfortran libxml2 libxslt mariadb-connector-c postgresql-libs \
+    \
+    # Download PyAV 17.0.1 source
+    && mkdir -p /tmp/av \
+    && cd /tmp/av \
+    && uv pip download \
+        --no-deps \
+        --no-binary av \
+        "av==17.0.1" \
+        -o av.tar.gz \
+    && tar -xf av.tar.gz \
+    && cd av-17.0.1 \
+    \
+    # Fix Cython "seek_func redeclared" error
+    && sed -i 's/seek_func: seek_func_t = pyio_seek/seek_func = pyio_seek/' av/container/pyio.py \
+    \
+    # Install the patched PyAV
+    && uv pip install . \
+    \
     &&if ls homeassistant/home_assistant_*.whl 1> /dev/null 2>&1; then \
         uv pip install homeassistant/home_assistant_*.whl; \
     fi \
     && uv pip install \
         -r homeassistant/requirements_all.txt \
         --index-strategy unsafe-best-match \
-    && apk del --no-cache .build-deps
+    && apk del --no-cache .build-deps \
+    && rm -rf /tmp/av
     
 
 ## Setup Home Assistant Core
