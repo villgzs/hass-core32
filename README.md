@@ -30,7 +30,7 @@ Prerequisited: Step No.3 - basic-added
 
 ![Docker Image Version](https://img.shields.io/github/v/release/home-assistant/core?label=Home%20Assistant%20Core&color=blue)
 ![Architecture](https://img.shields.io/badge/Architecture-ARMv6%20%7C%20ARMv7-orange)
-![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/docker-build.yml?label=Build)
+![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/builder.yml?label=Build)
 
 A custom Docker build of **Home Assistant Core** optimized for 32-bit ARM architectures (`linux/arm/v7` and `linux/arm/v6`), such as older Raspberry Pi models. This repository automatically fetches the latest stable Home Assistant Core source, replaces the standard container configuration, and builds a multi-architecture container image.
 
