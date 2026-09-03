@@ -13,7 +13,7 @@ env:
   IMAGE_NAME: villgzs/hass-core32
 
 jobs:
-  prepare:
+    prepare:
     name: Prepare source
     runs-on: ubuntu-latest
     outputs:
@@ -42,32 +42,12 @@ jobs:
 
       - name: Replace Dockerfile with your 32-bit version
         run: |
-          echo "=== Jelenlegi könyvtárstruktúra ==="
-          find build-repo -maxdepth 3 -type f -name "Dockerfile*" || true
+          echo "=== Dockerfile másolása ==="
+          cp build-repo/Dockerfile ha-core/Dockerfile
+          echo "Sikeresen másolva: build-repo/Dockerfile → ha-core/Dockerfile"
           echo ""
-          echo "=== build-repo tartalma ==="
-          ls -la build-repo/
-          echo ""
-          
-          # Próbáljuk meg a legvalószínűbb helyeket
-          if [ -f "build-repo/hass-core32/Dockerfile" ]; then
-            cp build-repo/hass-core32/Dockerfile ha-core/Dockerfile
-            echo "Másolva: build-repo/hass-core32/Dockerfile"
-          elif [ -f "build-repo/Dockerfile" ]; then
-            cp build-repo/Dockerfile ha-core/Dockerfile
-            echo "Másolva: build-repo/Dockerfile"
-          elif [ -f "build-repo/hass-core32bit/Dockerfile" ]; then
-            cp build-repo/hass-core32bit/Dockerfile ha-core/Dockerfile
-            echo "Másolva: build-repo/hass-core32bit/Dockerfile"
-          else
-            echo "HIBA: Nem találom a Dockerfile-t!"
-            find build-repo -name "Dockerfile*" 
-            exit 1
-          fi
-          
-          echo ""
-          echo "=== A bemásolt Dockerfile eleje ==="
-          head -n 20 ha-core/Dockerfile
+          echo "=== A használt Dockerfile eleje ==="
+          head -n 15 ha-core/Dockerfile
 
       - name: Upload prepared source
         uses: actions/upload-artifact@v4
