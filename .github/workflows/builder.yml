@@ -13,7 +13,7 @@ env:
   IMAGE_NAME: villgzs/hass-core32
 
 jobs:
-    prepare:
+  prepare:
     name: Prepare source
     runs-on: ubuntu-latest
     outputs:
