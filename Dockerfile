@@ -31,7 +31,8 @@ COPY --from=ghcr.io/alexxit/go2rtc:1.9.14@sha256:675c318b23c06fd862a61d262240c9a
 ## Setup Home Assistant Core dependencies
 COPY --parents requirements.txt homeassistant/package_constraints.txt homeassistant/
 
-RUN --network=host \
+## RUN --network=host \
+RUN \
     # Verify go2rtc can be executed
     go2rtc --version \
     && apk add --no-cache libffi libjpeg-turbo zlib freetype \
