@@ -67,6 +67,7 @@ RUN \
     &&if ls homeassistant/home_assistant_*.whl 1> /dev/null 2>&1; then \
         uv pip install homeassistant/home_assistant_*.whl; \
     fi \
+    && uv pip install "cython>=3.0,<3.2" \
     && uv pip install \
         -r homeassistant/requirements_all.txt \
         --index-strategy unsafe-best-match \
