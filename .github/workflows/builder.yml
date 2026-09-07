@@ -61,6 +61,15 @@ jobs:
           echo "=== A használt Dockerfile eleje ==="
           head -n 15 ha-core/Dockerfile
 
+      - name: Pin Cython version in pyproject.toml
+        run: |
+          # Biztonságos csere: a meglévő setuptools sor mellé beszúrja a cython korlátozást
+          sed -i 's/requires = \["setuptools==78.1.1"\]/requires = ["setuptools==78.1.1", "cython<3.2.7"]/' ha-core/pyproject.toml
+
+          # Ellenőrzés (opcionális, de ajánlott)
+          echo "=== Módosított [build-system] rész ==="
+          sed -n '/\[build-system\]/,/^\[/p' ha-core/pyproject.toml | head -20
+
       - name: Upload prepared source
         uses: actions/upload-artifact@v4
         with:
