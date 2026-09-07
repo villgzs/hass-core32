@@ -70,7 +70,7 @@ RUN \
 ## Setup Home Assistant Core
 COPY --parents LICENSE* README* homeassistant/ pyproject.toml homeassistant/
 RUN \
-    echo "Setup Home Assistant Core" \
+    echo "Third... Setup Home Assistant Core" \
     && uv pip install \
         --index-strategy unsafe-best-match \
         -e ./homeassistant \
