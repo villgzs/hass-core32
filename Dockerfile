@@ -62,7 +62,10 @@ COPY requirements_all.txt home_assistant_frontend-* home_assistant_intents-* hom
 #        --constraint /tmp/constraints.txt "cython==3.2.6" \
 
 RUN \
-    apk add --no-cache --virtual .build-deps autoconf cmake make ninja gcc g++ musl-dev rust cargo linux-headers libffi-dev jpeg-dev zlib-dev freetype-dev ffmpeg-dev pkgconf gfortran openblas-dev libxml2-dev libxslt-dev mariadb-dev postgresql-dev glib-dev openssl-dev mariadb-connector-c-dev \
+    apk add --no-cache --virtual .build-deps autoconf cmake make ninja gcc g++ \
+        musl-dev rust cargo linux-headers libffi-dev jpeg-dev zlib-dev freetype-dev ffmpeg-dev\
+        pkgconf gfortran openblas-dev libxml2-dev libxslt-dev mariadb-dev postgresql-dev glib-dev\
+        openssl-dev mariadb-connector-c-dev \
     && apk add --no-cache ffmpeg-libs libavc1394 openblas libgfortran libxml2 libxslt mariadb-connector-c postgresql-libs \
     && printf 'cython==3.2.6\n' > /tmp/constraints.txt \
     && if ls homeassistant/home_assistant_*.whl 1> /dev/null 2>&1; then \
