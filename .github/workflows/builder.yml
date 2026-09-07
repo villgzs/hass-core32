@@ -1,4 +1,4 @@
-name: Build 32-bit Home Assistant
+name: Build 32-bit Home Assistant - CORE
 
 on:
   workflow_dispatch:
@@ -75,7 +75,7 @@ jobs:
         with:
           name: ha-core-prepared
           path: ha-core
-          retention-days: 1
+          retention-days: 2
 
   build-armv7:
     name: Build arm/v7
