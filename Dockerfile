@@ -33,8 +33,13 @@ COPY --from=ghcr.io/alexxit/go2rtc:1.9.14@sha256:675c318b23c06fd862a61d262240c9a
 ## Setup Home Assistant Core dependencies
 COPY --parents requirements.txt homeassistant/package_constraints.txt homeassistant/
 
+ENV PIP_BUILD_CONSTRAINT=/etc/pip-build-constraints.txt
+ENV UV_BUILD_CONSTRAINT=/etc/pip-build-constraints.txt
+ENV UV_CONSTRAINT=/etc/pip-build-constraints.txt
+
 RUN \
     echo "First RUN is started..." \
+    && echo "cython<3.2.7" > /etc/pip-build-constraints.txt \
     # Verify go2rtc can be executed
     && go2rtc --version \
     && apk add --no-cache libffi libjpeg-turbo zlib freetype \
