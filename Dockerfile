@@ -33,13 +33,8 @@ COPY --from=ghcr.io/alexxit/go2rtc:1.9.14@sha256:675c318b23c06fd862a61d262240c9a
 ## Setup Home Assistant Core dependencies
 COPY --parents requirements.txt homeassistant/package_constraints.txt homeassistant/
 
-# 1. Beállítjuk a környezeti változókat a teljes Docker image-re
-ENV PIP_BUILD_CONSTRAINT=/etc/pip-build-constraints.txt
-ENV UV_BUILD_CONSTRAINT=/etc/pip-build-constraints.txt
-
 RUN \
-    # A korlátozás rögzítése a rendszer szintű fájlba
-    echo "cython<3.2.7" > /etc/pip-build-constraints.txt \
+    echo "First RUN is started..." \
     # Verify go2rtc can be executed
     && go2rtc --version \
     && apk add --no-cache libffi libjpeg-turbo zlib freetype \
@@ -57,21 +52,17 @@ RUN \
 
 COPY requirements_all.txt home_assistant_frontend-* home_assistant_intents-* homeassistant/
 
-#    && uv pip install \
-#        --index-strategy unsafe-best-match \
-#        --constraint /tmp/constraints.txt "cython==3.2.6" \
-
 RUN \
-    apk add --no-cache --virtual .build-deps autoconf cmake make ninja gcc g++ \
+    echo "Second RUN is started..." \
+    && apk add --no-cache --virtual .build-deps autoconf cmake make ninja gcc g++ \
         musl-dev rust cargo linux-headers libffi-dev jpeg-dev zlib-dev freetype-dev ffmpeg-dev\
         pkgconf gfortran openblas-dev libxml2-dev libxslt-dev mariadb-dev postgresql-dev glib-dev\
         openssl-dev mariadb-connector-c-dev \
     && apk add --no-cache ffmpeg-libs libavc1394 openblas libgfortran libxml2 libxslt mariadb-connector-c postgresql-libs \
-    && printf 'cython==3.2.6\n' > /tmp/constraints.txt \
     && if ls homeassistant/home_assistant_*.whl 1> /dev/null 2>&1; then \
         uv pip install homeassistant/home_assistant_*.whl; \
     fi \
-    && UV_CONSTRAINT=/tmp/constraints.txt uv pip install \
+    && uv pip install \
         -r homeassistant/requirements_all.txt \
         --index-strategy unsafe-best-match \
     && apk del --no-cache .build-deps    
