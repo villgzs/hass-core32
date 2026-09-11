@@ -234,8 +234,10 @@ jobs:
             for tag in "${EXTRA[@]}"; do
               # üres elemek kihagyása
               tag=$(echo "$tag" | xargs)
+              # A kettőspontok cseréje kötőjelre a tag nevében, ha véletlenül benne maradna
+              tag="${tag//:/-}"
               if [ -n "$tag" ]; then
-                TAGS+=("--tag ${DOCKERHUB_IMAGE}:${tag}")
+                TAGS+=("${DOCKERHUB_IMAGE}:${tag}")
               fi
             done
           fi
@@ -243,9 +245,15 @@ jobs:
           echo "Docker Hub tagek:"
           printf '  %s\n' "${TAGS[@]}"
           echo ""
+
+          # Összeállítjuk a Buildx imagetools -t paramétereit
+          IMAGETOOLS_ARGS=()
+          for target in "${TARGETS[@]}"; do
+            IMAGETOOLS_ARGS+=("-t" "$target")
+          done
   
           docker buildx imagetools create \
-            "${TAGS[@]}" \
+            "${IMAGETOOLS_ARGS[@]}" \
             ${GHCR_IMAGE}:tmp-armv7 \
             ${GHCR_IMAGE}:tmp-armv6
   
