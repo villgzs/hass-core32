@@ -114,8 +114,10 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7
           provenance: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=armv7
+          cache-to: type=gha,mode=max,scope=armv7
+          # cache-from: type=gha,scope=${{ matrix.platform }}
+          # cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
 
   build-armv6:
     name: Build arm/v6
@@ -153,8 +155,8 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6
           provenance: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=armv6
+          cache-to: type=gha,mode=max,scope=armv6
           
   
   create-multi-manifest:
