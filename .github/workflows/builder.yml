@@ -200,6 +200,9 @@ jobs:
       contents: read
       packages: read
     steps:
+      - name: Checkout repository   # <-- ezt is add hozzá, ha még nincs
+        uses: actions/checkout@v4
+        
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
   
@@ -270,3 +273,12 @@ jobs:
               [ -n "$tag" ] && echo "  • ${DOCKERHUB_IMAGE}:${tag}"
             done
           fi          
+          
+      - name: Update Docker Hub README
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-arm32
+          readme-filepath: ./README.md
+          short-description: Home Assistant 32-bit (armv7 + armhf) multi-arch image
