@@ -229,8 +229,8 @@ jobs:
   
           # Alap tagek
           TAGS=(
-            "--tag ${DOCKERHUB_IMAGE}:latest"
-            "--tag ${DOCKERHUB_IMAGE}:${VERSION}"
+            "${DOCKERHUB_IMAGE}:latest"
+            "${DOCKERHUB_IMAGE}:${VERSION}"
           )
   
           # EXTRA_TAGS feldolgozása (pontosvesszővel elválasztott lista)
@@ -253,9 +253,13 @@ jobs:
 
           # Összeállítjuk a Buildx imagetools -t paramétereit
           IMAGETOOLS_ARGS=()
-          for target in "${TARGETS[@]}"; do
-            IMAGETOOLS_ARGS+=("-t" "$target")
+          for target in "${TAGS[@]}"; do
+            IMAGETOOLS_ARGS+=("--tag" "$target")
           done
+
+          echo "Docker Hub jaított tagek:"
+          printf '  %s\n' "${IMAGETOOLS_ARGS[@]}"
+          echo ""
   
           docker buildx imagetools create \
             "${IMAGETOOLS_ARGS[@]}" \
