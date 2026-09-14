@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ha.outputs.version }}
+      tags: ${{steps.ha.outputs.tags}}
     steps:
       - name: Checkout this repository (a te Dockerfile-od miatt)
         uses: actions/checkout@v4
@@ -39,12 +40,15 @@ jobs:
         run: |
           if [ -n "${{ inputs.core_version }}" ]; then
             VERSION="${{ inputs.core_version }}"
+            DOCKERTAGS=""
           else
             VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
+            DOCKERTAGS="${{env.EXTRA_TAGS}}"
           fi
-          
+
+          echo "Home Assistant Core: ${VERSION}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Home Assistant Core: ${VERSION}"          
+          echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
 
       - name: Checkout official Home Assistant core
         uses: actions/checkout@v4
@@ -234,8 +238,8 @@ jobs:
           )
   
           # EXTRA_TAGS feldolgozása (pontosvesszővel elválasztott lista)
-          if [ -n "${{ env.EXTRA_TAGS }}" ]; then
-            IFS=';' read -ra EXTRA <<< "${{ env.EXTRA_TAGS }}"
+          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
+            IFS=';' read -ra EXTRA <<< "${{ needs.prepare.outputs.tags }}"
             for tag in "${EXTRA[@]}"; do
               # üres elemek kihagyása
               tag=$(echo "$tag" | xargs)
@@ -270,8 +274,8 @@ jobs:
           echo "Kész Docker Hub image-ek:"
           echo "  • ${DOCKERHUB_IMAGE}:latest"
           echo "  • ${DOCKERHUB_IMAGE}:${VERSION}"
-          if [ -n "${{ env.EXTRA_TAGS }}" ]; then
-            IFS=';' read -ra EXTRA <<< "${{ env.EXTRA_TAGS }}"
+          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
+            IFS=';' read -ra EXTRA <<< "${{ needs.prepare.outputs.tags }}"
             for tag in "${EXTRA[@]}"; do
               tag=$(echo "$tag" | xargs)
               [ -n "$tag" ] && echo "  • ${DOCKERHUB_IMAGE}:${tag}"
