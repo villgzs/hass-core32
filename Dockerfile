@@ -7,7 +7,7 @@
 ARG BUILD_FROM=ghcr.io/villgzs/basic-added:latest
 FROM ${BUILD_FROM}
 
-ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/wheels32bit/musllinux-index/ https://wheels.home-assistant.io/musllinux-index/"
+ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/ https://wheels.home-assistant.io/musllinux-index/"
 
 LABEL \
     io.hass.type="core" \
