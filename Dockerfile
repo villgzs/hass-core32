@@ -41,6 +41,7 @@ ENV UV_CONSTRAINT=/etc/pip-build-constraints.txt
 
 RUN \
     echo "First RUN is started..." \
+    ls -las /init \
     && echo "cython<3.2.7" > /etc/pip-build-constraints.txt \
     # Verify go2rtc can be executed
     && go2rtc --version \
