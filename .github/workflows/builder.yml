@@ -12,7 +12,6 @@ on:
   # push:
   #   branches:
   #     - main
-  
       
 env:
   
@@ -167,6 +166,10 @@ jobs:
   create-multi-manifest:
     name: Create multi-arch manifest
     needs: [prepare, build-armv7, build-armv6]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build-armv7.result == 'success' || needs.build-armv6.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -184,22 +187,48 @@ jobs:
 
       - name: Create and push multi-arch image
         run: |
-          echo "Összefűzés: armv7 + armv6 → multi-arch"
-          docker buildx imagetools create \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6
 
+          IMAGES=""
+
+          if [ "${{ needs.build-armv7.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7"
+            echo "✓ armv7 build sikeres → hozzáadva"
+          else
+            echo "✗ armv7 build sikertelen → kihagyva"
+          fi
+  
+          if [ "${{ needs.build-armv6.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6"
+            echo "✓ armv6 build sikeres → hozzáadva"
+          else
+            echo "✗ armv6 build sikertelen → kihagyva"
+          fi
+  
+          if [ -z "$IMAGES" ]; then
+            echo "Nincs egyetlen sikeres build sem, kihagyom a manifest létrehozását."
+            exit 0
+          fi
+  
+          echo ""
+          echo "Összefűzés a következő image-ekkel:$IMAGES"
+          echo ""
+  
+          docker buildx imagetools create \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.tags }} \
+            $IMAGES
+    
           echo ""
           echo "Kész image-ek:"
-          echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }}"
+          echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }}"                
       
 
   push-dockerhub:
     name: Push to Docker Hub
-    needs: [prepare, create-multi-manifest]
+    needs: [prepare, build-armv7, build-armv6]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build-armv7.result == 'success' || needs.build-armv6.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -265,15 +294,38 @@ jobs:
           echo "Docker Hub jaított tagek:"
           printf '  %s\n' "${IMAGETOOLS_ARGS[@]}"
           echo ""
+
+          IMAGES=""
+
+          if [ "${{ needs.build-armv7.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7"
+            echo "✓ armv7 build sikeres → hozzáadva"
+          else
+            echo "✗ armv7 build sikertelen → kihagyva"
+          fi
   
-          docker buildx imagetools create \
-            "${IMAGETOOLS_ARGS[@]}" \
-            ${GHCR_IMAGE}:tmp-armv7 \
-            ${GHCR_IMAGE}:tmp-armv6
+          if [ "${{ needs.build-armv6.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6"
+            echo "✓ armv6 build sikeres → hozzáadva"
+          else
+            echo "✗ armv6 build sikertelen → kihagyva"
+          fi
+  
+          if [ -z "$IMAGES" ]; then
+            echo "Nincs egyetlen sikeres build sem, kihagyom a manifest létrehozását."
+            exit 0
+          fi
   
           echo ""
+          echo "Összefűzés a következő image-ekkel:$IMAGES"
+          echo ""
+                  
+          docker buildx imagetools create \
+            "${IMAGETOOLS_ARGS[@]}" \ \
+            $IMAGES
+            
+          echo ""
           echo "Kész Docker Hub image-ek:"
-          echo "  • ${DOCKERHUB_IMAGE}:latest"
           echo "  • ${DOCKERHUB_IMAGE}:${VERSION}"
           if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
             IFS=';' read -ra EXTRA <<< "${{ needs.prepare.outputs.tags }}"
