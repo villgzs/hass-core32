@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       core_version:
-        description: "Home Assistant Core verzió (üres = legfrissebb stable)"
+        description: "Home Assistant Core verzió (latest = legfrissebb stable)"
         required: false
-        default: ""
+        default: "2026.9.2"
   # schedule:
   #  - cron: "0 4 * * *"
   # push:
@@ -38,12 +38,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "${{ inputs.core_version }}" ]; then
-            VERSION="${{ inputs.core_version }}"
-            DOCKERTAGS=""
-          else
+          if [ "${{ inputs.core_version }}" = "latest" ]; then
             VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
             DOCKERTAGS="${{env.EXTRA_TAGS}}"
+          else
+            VERSION="${{ inputs.core_version }}"
+            DOCKERTAGS=""
           fi
 
           echo "Home Assistant Core: ${VERSION}"
