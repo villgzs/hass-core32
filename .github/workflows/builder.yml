@@ -214,7 +214,7 @@ jobs:
           echo ""
   
           docker buildx imagetools create \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.tags }} \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }} \
             $IMAGES
     
           echo ""
@@ -321,7 +321,7 @@ jobs:
           echo ""
                   
           docker buildx imagetools create \
-            "${IMAGETOOLS_ARGS[@]}" \ \
+            "${IMAGETOOLS_ARGS[@]}" \
             $IMAGES
             
           echo ""
