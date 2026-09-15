@@ -43,7 +43,7 @@ jobs:
             DOCKERTAGS="${{env.EXTRA_TAGS}}"
           else
             VERSION="${{ inputs.core_version }}"
-            DOCKERTAGS=""
+            DOCKERTAGS="testingphase"
           fi
 
           echo "Home Assistant Core: ${VERSION}"
@@ -75,7 +75,8 @@ jobs:
           echo "=== Módosított [build-system] rész ==="
           sed -n '/\[build-system\]/,/^\[/p' ha-core/pyproject.toml | head -20
 
-          ls -las ha-core/init
+          echo "ls -las ha-core/rootfs/init"
+          ls -las ha-core/rootfs/init
 
       - name: Upload prepared source
         uses: actions/upload-artifact@v4
