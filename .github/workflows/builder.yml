@@ -282,11 +282,10 @@ jobs:
           GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           DOCKERHUB_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-arm32"
   
-          # Alap tagek
+          # Alap tagek - lista végére megy
           TAGS=(
             "${DOCKERHUB_IMAGE}:nontested"
-            "${DOCKERHUB_IMAGE}:${VERSION}"
-          )
+          )          
   
           # EXTRA_TAGS feldolgozása (pontosvesszővel elválasztott lista)
           if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
@@ -301,6 +300,8 @@ jobs:
               fi
             done
           fi
+          # Lista első pozíciója
+          TAGS+=("${DOCKERHUB_IMAGE}:${VERSION}")
   
           echo "Docker Hub tagek:"
           printf '  %s\n' "${TAGS[@]}"
