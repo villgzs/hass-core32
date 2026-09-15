@@ -6,7 +6,7 @@ on:
       core_version:
         description: "Home Assistant Core verzió (latest = legfrissebb stable)"
         required: false
-        default: "2026.9.2"
+        default: "2026.9.1"
   # schedule:
   #  - cron: "0 4 * * *"
   # push:
@@ -74,6 +74,8 @@ jobs:
           # Ellenőrzés (opcionális, de ajánlott)
           echo "=== Módosított [build-system] rész ==="
           sed -n '/\[build-system\]/,/^\[/p' ha-core/pyproject.toml | head -20
+
+          ls -las ha-core/init
 
       - name: Upload prepared source
         uses: actions/upload-artifact@v4
