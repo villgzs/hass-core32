@@ -6,7 +6,7 @@ on:
       core_version:
         description: "Home Assistant Core verzió (latest = legfrissebb stable)"
         required: false
-        default: "2026.9.1"
+        default: "2026.9.2"
   # schedule:
   #  - cron: "0 4 * * *"
   # push:
@@ -101,8 +101,12 @@ jobs:
 
       - name: Checking attributes of /init
         run: |
+          chmod 755 ha-core/rootfs/init
+          chmod 755 ha-core/rootfs/etc/services.d/home-assistant/*
+          
           echo "ls -las ha-core/rootfs/init"
           ls -las ha-core/rootfs/init
+          ls -las ha-core/rootfs/etc/services.d/home-assistant/*
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -144,6 +148,15 @@ jobs:
         with:
           name: ha-core-prepared
           path: ha-core
+
+      - name: Checking attributes of /init
+        run: |
+          chmod 755 ha-core/rootfs/init
+          chmod 755 ha-core/rootfs/etc/services.d/home-assistant/*
+          
+          echo "ls -las ha-core/rootfs/init"
+          ls -las ha-core/rootfs/init
+          ls -las ha-core/rootfs/etc/services.d/home-assistant/*
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
