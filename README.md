@@ -4,7 +4,7 @@ You can find Home-assistant releases here:
 
 Latest official image can be found here:
 
-[https://github.com/home-assistant/core/pkgs/container/home-assistant/1201250336?tag=latest](https://github.com/home-assistant/core/pkgs/container/home-assistant/1201250336?tag=latest)
+[https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest](https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest)
 
 # THIS IS NOT OFFICIAL RELEASE !
 
