@@ -13,7 +13,7 @@ Latest official image can be found here:
 
   Unofficial Build: This repository is not created or supported by the official Home Assistant team. Please do not submit issue reports or complaints to Home Assistant developers.
 
-  32-bit Deprecation: Official support for 32-bit systems (armv7) has ended. This repository was created strictly for experimental/testing purposes following official build instructions.
+  32-bit Deprecation: Official support for 32-bit systems (armv7) has ended. This repository was created strictly for experimental/testing purposes, following the official build and release steps as closely as possible, though it was not always feasible to do so across all areas.
 
   No Warranty & No Support: This repository is untested and unmaintained. Do not run this in a production environment.
 
