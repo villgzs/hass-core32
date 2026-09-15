@@ -99,6 +99,11 @@ jobs:
           name: ha-core-prepared
           path: ha-core
 
+      - name: Checking attributes of /init
+        run: |
+          echo "ls -las ha-core/rootfs/init"
+          ls -las ha-core/rootfs/init
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
