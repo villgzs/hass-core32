@@ -81,10 +81,18 @@ jobs:
       - name: Generate English translations from strings.json
         working-directory: ha-core
         run: |
+          # Python 3 szintaxis javítás
           sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' \
             script/translations/__main__.py
+
+          # A script függőségei
+          pip install --quiet orjson awesomeversion
+
           python3 -m script.translations develop --all
-          ls -la homeassistant/components/onboarding/translations/
+
+          echo "=== Ellenőrzés ==="
+          ls -la homeassistant/components/onboarding/translations/ || echo "FIGYELEM: nincs translations mappa"
+          head -30 homeassistant/components/onboarding/translations/en.json || true
           
       - name: Replace Dockerfile with your 32-bit version
         run: |
