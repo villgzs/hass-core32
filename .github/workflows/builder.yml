@@ -81,9 +81,11 @@ jobs:
       - name: Generate English translations from strings.json
         working-directory: ha-core
         run: |
+          sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' \
+            script/translations/__main__.py
           python3 -m script.translations develop --all
-          ls -la homeassistant/components/onboarding/translations/ || echo "FIGYELEM: nincs translations mappa"
-
+          ls -la homeassistant/components/onboarding/translations/
+          
       - name: Replace Dockerfile with your 32-bit version
         run: |
           echo "=== Dockerfile másolása ==="
