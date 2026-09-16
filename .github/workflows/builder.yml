@@ -7,6 +7,11 @@ on:
         description: "Home Assistant Core verzió ( üresen = legfrissebb stable)"
         required: false
         default: ""
+      build_armv6:
+        description: "Építsünk armv6-ot"
+        type: boolean
+        required: false
+        default: false
   # schedule:
   #  - cron: "0 4 * * *"
   # push:
@@ -128,16 +133,17 @@ jobs:
           file: ha-core/Dockerfile
           platforms: linux/arm/v7
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7-${{ needs.prepare.outputs.version }}
           provenance: false
-          cache-from: type=gha,scope=armv7
-          cache-to: type=gha,mode=max,scope=armv7
+          cache-from: type=gha,scope=armv7-${{ needs.prepare.outputs.version }}
+          cache-to: type=gha,mode=max,scope=armv7-${{ needs.prepare.outputs.version }}
           # cache-from: type=gha,scope=${{ matrix.platform }}
           # cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
 
   build-armv6:
     name: Build arm/v6
     needs: prepare
+    if: ${{inputs.build_armv6}}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -178,10 +184,10 @@ jobs:
           file: ha-core/Dockerfile
           platforms: linux/arm/v6
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6-${{ needs.prepare.outputs.version }}
           provenance: false
-          cache-from: type=gha,scope=armv6
-          cache-to: type=gha,mode=max,scope=armv6
+          cache-from: type=gha,scope=armv6-${{ needs.prepare.outputs.version }}
+          cache-to: type=gha,mode=max,scope=armv6-${{ needs.prepare.outputs.version }}
           
   
   create-multi-manifest:
@@ -212,14 +218,14 @@ jobs:
           IMAGES=""
 
           if [ "${{ needs.build-armv7.result }}" = "success" ]; then
-            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7"
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv7-${{ needs.prepare.outputs.version }}"
             echo "✓ armv7 build sikeres → hozzáadva"
           else
             echo "✗ armv7 build sikertelen → kihagyva"
           fi
   
           if [ "${{ needs.build-armv6.result }}" = "success" ]; then
-            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6"
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:tmp-armv6-${{ needs.prepare.outputs.version }}"
             echo "✓ armv6 build sikeres → hozzáadva"
           else
             echo "✗ armv6 build sikertelen → kihagyva"
@@ -255,7 +261,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - name: Checkout repository   # <-- ezt is add hozzá, ha még nincs
+      - name: Checkout repository   
         uses: actions/checkout@v4
         
       - name: Set up Docker Buildx
