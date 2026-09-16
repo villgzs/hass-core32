@@ -55,11 +55,25 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
 
+  build-armv7:
+    name: Build arm/v7
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # - name: Download prepared source
+        # uses: actions/download-artifact@v4
+        # with:
+        #   name: ha-core-prepared
+        #   path: ha-core
+
       - name: Checkout official Home Assistant core
         uses: actions/checkout@v4
         with:
           repository: home-assistant/core
-          ref: ${{ steps.ha.outputs.version }}
+          ref: ${{ needs.prepare.outputs.version }}
           path: ha-core
 
       - name: Replace Dockerfile with your 32-bit version
@@ -83,35 +97,14 @@ jobs:
           echo "ls -las ha-core/rootfs/init"
           ls -las ha-core/rootfs/init
 
-      - name: Upload prepared source
-        uses: actions/upload-artifact@v4
-        with:
-          name: ha-core-prepared
-          path: ha-core
-          retention-days: 2
-
-  build-armv7:
-    name: Build arm/v7
-    needs: prepare
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Download prepared source
-        uses: actions/download-artifact@v4
-        with:
-          name: ha-core-prepared
-          path: ha-core
-
-      - name: Checking attributes of /init
-        run: |
-          chmod 755 ha-core/rootfs/init
-          chmod 755 ha-core/rootfs/etc/services.d/home-assistant/*
-          
-          echo "ls -las ha-core/rootfs/init"
-          ls -las ha-core/rootfs/init
-          ls -las ha-core/rootfs/etc/services.d/home-assistant/*
+      # - name: Checking attributes of /init
+      #   run: |
+      #     chmod 755 ha-core/rootfs/init
+      #     chmod 755 ha-core/rootfs/etc/services.d/home-assistant/*
+      #     
+      #     echo "ls -las ha-core/rootfs/init"
+      #     ls -las ha-core/rootfs/init
+      #     ls -las ha-core/rootfs/etc/services.d/home-assistant/*
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
