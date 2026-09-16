@@ -78,6 +78,12 @@ jobs:
           ref: ${{ needs.prepare.outputs.version }}
           path: ha-core
 
+      - name: Generate English translations from strings.json
+        working-directory: ha-core
+        run: |
+          python3 -m script.translations develop --all
+          ls -la homeassistant/components/onboarding/translations/ || echo "FIGYELEM: nincs translations mappa"
+
       - name: Replace Dockerfile with your 32-bit version
         run: |
           echo "=== Dockerfile másolása ==="
