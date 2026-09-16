@@ -6,7 +6,7 @@ on:
       core_version:
         description: "Home Assistant Core verzió ( üresen = legfrissebb stable)"
         required: false
-        default: "2026.9.2"
+        default: ""
   # schedule:
   #  - cron: "0 4 * * *"
   # push:
