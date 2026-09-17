@@ -16,23 +16,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Find the Build images workflow run for that tag
+      - name: Find the Build images workflow run for the latest stable tag
         id: run
         run: |
-          # A "Build images" workflow file neve: builder.yml
+          TAG="${{ steps.release.outputs.tag }}"
+          echo "Looking for tag: $TAG"
+      
+          # Lekérjük a legutóbbi sikeres release event-eket
           RUN_ID=$(gh api \
             -H "Accept: application/vnd.github+json" \
-            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=20" \
-            --jq ".workflow_runs[] | select(.head_branch == \"${{ steps.release.outputs.tag }}\" or .display_title | contains(\"${{ steps.release.outputs.tag }}\")) | .id" \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.display_title | test(\"$TAG\")) | .id" \
             | head -n1)
-
+          RUN_ID_SURE=$(gh api \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or .display_title | contains(\"$TAG\")) | .id" \
+            | head -n1)
+      
           if [ -z "$RUN_ID" ]; then
-            echo "Nem találtam sikeres Build images futást a ${{ steps.release.outputs.tag }} taghez"
+            echo "Nem találtam sikeres Build images futást a $TAG taghez"
             exit 1
           fi
 
+          echo "run_id=$RUN_ID_SURE"
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-          echo "Found run-id: $RUN_ID"
+          echo "Found run-id: $RUN_ID (title contains $TAG)"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
