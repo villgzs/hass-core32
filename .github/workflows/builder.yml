@@ -85,6 +85,8 @@ jobs:
           sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' \
             script/translations/__main__.py
 
+          # sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' script/translations/__main__.py
+
           # A script függőségei
           pip install --quiet orjson awesomeversion
 
