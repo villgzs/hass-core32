@@ -24,6 +24,8 @@ USE AT YOUR OWN RISK.
 
 Prerequisited: Step No.3 - basic-added
 
+### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
+
 ### STEP No.4 
 
 # Home Assistant Core (32-bit ARM Build)
