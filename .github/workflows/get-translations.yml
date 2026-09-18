@@ -23,24 +23,27 @@ jobs:
           echo "Looking for tag: $TAG"
       
           # Lekérjük a legutóbbi sikeres release event-eket
+          echo "Run - not sure "
           RUN_ID=$(gh api \
             -H "Accept: application/vnd.github+json" \
             "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
             --jq ".workflow_runs[] | select(.display_title | test(\"$TAG\")) | .id" \
             | head -n1)
+            
+          echo "Run - sure "
           RUN_ID_SURE=$(gh api \
             "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
             --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or .display_title | contains(\"$TAG\")) | .id" \
             | head -n1)
       
-          if [ -z "$RUN_ID" ]; then
+          if [ -z "$RUN_ID_SURE" ]; then
             echo "Nem találtam sikeres Build images futást a $TAG taghez"
             exit 1
           fi
 
           echo "run_id=$RUN_ID_SURE"
-          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-          echo "Found run-id: $RUN_ID (title contains $TAG)"
+          echo "run_id=$RUN_ID_SURE" >> $GITHUB_OUTPUT
+          echo "Found run-id: $RUN_ID_SURE (title contains $TAG)"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
