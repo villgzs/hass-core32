@@ -57,6 +57,8 @@ ghcr.io/villgzs/hass-core32:<version>
 
 ## Run the container
 
+Fill in ___PATH_TO_YOUR_CONFIG___ section:
+
 ```
 docker run -d \
   --name homeassistant \
