@@ -53,3 +53,20 @@ The resulting images are published to the GitHub Container Registry (GHCR):
 ```bash
 ghcr.io/villgzs/hass-core32:latest
 ghcr.io/villgzs/hass-core32:<version>
+```
+
+## Run the container
+
+```
+docker run -d \
+  --name homeassistant \
+  --network host \
+  --restart unless-stopped \
+  --cap-add=NET_ADMIN \
+  --cap-add=NET_RAW \
+  -v /___PATH_TO_YOUR_CONFIG___:/config \
+  -v /etc/localtime:/etc/localtime:ro \
+  -v /run/dbus:/run/dbus:ro \
+  ghcr.io/villgzs/hass-core32:latest
+```
+
