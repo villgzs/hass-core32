@@ -54,7 +54,6 @@ RUN \
     # Install uv at the version pinned in the requirements file
     && pip3 install --no-cache-dir "uv==$(awk -F'==' '/^uv==/{print $2}' homeassistant/requirements.txt)" \
     && uv pip install \
-        --index-strategy unsafe-best-match \
         -r homeassistant/requirements.txt \
     && apk del --no-cache .build-deps
 
@@ -72,7 +71,6 @@ RUN \
     fi \
     && uv pip install \
         -r homeassistant/requirements_all.txt \
-        --index-strategy unsafe-best-match \
     && apk del --no-cache .build-deps    
 
 ## Setup Home Assistant Core
@@ -80,7 +78,6 @@ COPY --parents LICENSE* README* homeassistant/ pyproject.toml homeassistant/
 RUN \
     echo "Third... Setup Home Assistant Core" \
     && uv pip install \
-        --index-strategy unsafe-best-match \
         -e ./homeassistant \
     && python3 -m compileall \
         homeassistant/homeassistant
