@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get latest stable release tag
-        id: release
+        id: version
         run: |
           TAG=$(gh api repos/home-assistant/core/releases/latest --jq .tag_name)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$TAG" >> $GITHUB_OUTPUT
           echo "Latest stable tag: $TAG"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -19,7 +19,7 @@ jobs:
       - name: Find the Build images workflow run for the latest stable tag
         id: run
         run: |
-          TAG="${{ steps.release.outputs.tag }}"
+          TAG="${{ steps.version.outputs.version }}"
           echo "Looking for tag: $TAG"
       
           # Lekérjük a legutóbbi sikeres release event-eket
