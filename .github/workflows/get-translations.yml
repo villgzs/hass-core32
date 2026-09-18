@@ -29,15 +29,18 @@ jobs:
             "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
             --jq ".workflow_runs[] | select(.display_title | test(\"$TAG\")) | .id" \
             | head -n1)
-          echo "Found run-id: $RUN_ID (title contains $TAG)"
+          
+          echo "Found run-id (title contains $TAG): $RUN_ID"
             
           echo "Run - sure "
+
           RUN_ID_SURE=$(gh api \
             "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
-            --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or .display_title | contains(\"$TAG\")) | .id" \
+            --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
             | head -n1)
-          echo "Found run-id: $RUN_ID_SURE (title contains $TAG)"
-      
+            
+          echo "Found run-id (title contains $TAG): $RUN_ID_SURE"
+                
           if [ -z "$RUN_ID_SURE" ]; then
             echo "Nem találtam sikeres Build images futást a $TAG taghez"
             exit 1
