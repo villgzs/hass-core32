@@ -54,5 +54,5 @@ jobs:
 
       - name: Extract
         run: |
-          tar xvf translations.tar.gz
+          echo "tar xvf translations.tar.gz"
           # ls -la homeassistant/components/*/translations/ 
