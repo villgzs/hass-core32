@@ -78,8 +78,62 @@ jobs:
           ref: ${{ needs.prepare.outputs.version }}
           path: ha-core
 
+      - name: Find the Build images workflow run for the latest stable tag
+        working-directory: ha-core
+        id: findrunid
+        run: |
+          TAG="${{ needs.prepare.outputs.version }}"
+          echo "Looking for tag: $TAG"
+      
+          # Lekérjük a legutóbbi sikeres release event-eket
+          echo "Run - not sure "
+          RUN_ID=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.display_title | test(\"$TAG\")) | .id" \
+            | head -n1)
+          
+          echo "Found run-id (title contains $TAG): $RUN_ID"
+            
+          echo "Run - sure "
+
+          RUN_ID_SURE=$(gh api \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
+            | head -n1)
+            
+          echo "Found run-id (title contains $TAG): $RUN_ID_SURE"
+                
+          if [ -z "$RUN_ID_SURE" ]; then
+            echo "Nem találtam sikeres Build images futást a $TAG taghez"
+            exit 1
+          fi
+
+          echo "run_id=$RUN_ID"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Found run-id: $RUN_ID (title contains $TAG)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download translations artifact
+        uses: actions/download-artifact@v4   # vagy újabb
+        with:
+          name: translations
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # public repo esetén elég
+          repository: home-assistant/core
+          run-id: ${{ steps.findrunid.outputs.run_id }}
+          path: ha-core
+
+      - name: Extract
+        working-directory: ha-core
+        run: |
+          tar xvf translations.tar.gz
+          echo "translations extracted"
+          # ls -la homeassistant/components/*/translations/ 
+
       - name: Generate English translations from strings.json
         working-directory: ha-core
+        if: failure()
         run: |
           # Python 3 szintaxis javítás
           sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' \
