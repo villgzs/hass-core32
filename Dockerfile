@@ -7,6 +7,9 @@
 ARG BUILD_FROM=ghcr.io/villgzs/basic-added:latest
 FROM ${BUILD_FROM}
 
+ENV UV_CONCURRENT_DOWNLOADS=1
+ENV UV_HTTP_RETRIES=5
+
 ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/ https://wheels.home-assistant.io/musllinux-index/"
 
 LABEL \
