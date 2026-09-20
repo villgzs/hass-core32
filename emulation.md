@@ -1,5 +1,3 @@
-Here’s the answer in English:
-
 The image `ghcr.io/villgzs/hass-core32:2026.9.3` is a **32-bit ARM** (linux/arm/v7) build of Home Assistant Core.  
 On an AMD64 host you must run it with QEMU emulation.
 
