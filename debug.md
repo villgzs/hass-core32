@@ -1,3 +1,7 @@
+```
+docker run -d   --name homeassistant   --platform linux/arm/v7   --network host   --restart unless-stopped   --cap-add=NET_ADMIN   --cap-add=NET_RAW   -e LOGGER=debug -e PYTHONUNBUFFERED=1 -v /home/zsolti/hass/dockeremu/config:/config   -v /etc/localtime:/etc/localtime:ro   -v /run/dbus:/run/dbus:ro   ghcr.io/villgzs/hass-core32:2026.9.3 && docker logs -f --tail 200 homeassistant | tee homeassistantdockerlog.txt
+```
+
 A bővebb logoláshoz a Home Assistantnak a `LOGGER` környezeti változót kell beállítani.
 
 ### Ajánlott indítás (debug szintű loggal)
