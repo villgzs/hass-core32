@@ -23,7 +23,7 @@ env:
   # BUILD_FROM: dockergzs/hass-base-python:3.14-alpine3.24-armv7
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  EXTRA_TAGS: "python:3.14-alpine3.24;homeassistant;home-assistant;arm32;hass-core32;homeassistant-arm;home-assistant-core32;homeassistant32;homeassistant-arm32;latest"
+  EXTRA_TAGS: "hass-core32;homeassistant32;arm32;latest"
 
 jobs:
   prepare:
