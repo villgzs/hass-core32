@@ -1,0 +1,440 @@
+name: Build 32-bit Home Assistant - CORE - TEST
+
+on:
+  workflow_dispatch:
+    inputs:
+      core_version:
+        description: "Home Assistant Core verzió ( üresen = legfrissebb stable)"
+        required: false
+        default: ""
+      build_armv6:
+        description: "Építsünk armv6-ot"
+        type: boolean
+        required: false
+        default: false
+  # schedule:
+  #  - cron: "0 4 * * *"
+  # push:
+  #   branches:
+  #     - main
+      
+env:
+  
+  # BUILD_FROM: dockergzs/hass-base-python:3.14-alpine3.24-armv7
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  EXTRA_TAGS: "python:3.14-alpine3.24;homeassistant;home-assistant;arm32;hass-core32;homeassistant-arm;home-assistant-core32;homeassistant32;homeassistant-arm32;latest"
+
+jobs:
+  prepare:
+    name: Prepare source
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ha.outputs.version }}
+      tags: ${{steps.ha.outputs.tags}}
+    steps:
+      
+          
+      - name: Get latest Home Assistant stable version
+        id: ha
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.core_version }}" ]; then
+            VERSION="${{ inputs.core_version }}"
+            DOCKERTAGS="testingphase"
+          else
+            VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
+            DOCKERTAGS="${{env.EXTRA_TAGS}}"
+          fi
+          
+          echo "Home Assistant Core: ${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+
+  build-armv7:
+    name: Build arm/v7
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout this repository (a te Dockerfile-od miatt)
+        uses: actions/checkout@v4
+        with:
+          path: build-repo
+          
+      # - name: Download prepared source
+        # uses: actions/download-artifact@v4
+        # with:
+        #   name: ha-core-prepared
+        #   path: ha-core
+
+      - name: Checkout official Home Assistant core
+        uses: actions/checkout@v4
+        with:
+          repository: home-assistant/core
+          ref: ${{ needs.prepare.outputs.version }}
+          path: ha-core
+
+      - name: Find the Build images workflow run for the latest stable tag
+        working-directory: ha-core
+        id: findrunid
+        run: |
+          TAG="${{ needs.prepare.outputs.version }}"
+          echo "Looking for tag: $TAG"
+      
+          # Lekérjük a legutóbbi sikeres release event-eket
+          echo "Run - not sure "
+          RUN_ID=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.display_title | test(\"$TAG\")) | .id" \
+            | head -n1)
+          
+          echo "Found run-id (title contains $TAG): $RUN_ID"
+            
+          echo "Run - sure "
+
+          RUN_ID_SURE=$(gh api \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
+            | head -n1)
+            
+          echo "Found run-id (title contains $TAG): $RUN_ID_SURE"
+                
+          if [ -z "$RUN_ID_SURE" ]; then
+            echo "Nem találtam sikeres Build images futást a $TAG taghez"
+            exit 1
+          fi
+
+          echo "run_id=$RUN_ID"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Found run-id: $RUN_ID (title contains $TAG)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download translations artifact
+        uses: actions/download-artifact@v4   # vagy újabb
+        with:
+          name: translations
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # public repo esetén elég
+          repository: home-assistant/core
+          run-id: ${{ steps.findrunid.outputs.run_id }}
+          path: ha-core
+
+      - name: Extract
+        working-directory: ha-core
+        run: |
+          tar xvf translations.tar.gz
+          echo "translations extracted"
+          # ls -la homeassistant/components/*/translations/ 
+
+      - name: Generate English translations from strings.json
+        working-directory: ha-core
+        if: failure()
+        run: |
+          # Python 3 szintaxis javítás
+          sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' \
+            script/translations/__main__.py
+
+          # sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' script/translations/__main__.py
+
+          # A script függőségei
+          pip install --quiet orjson awesomeversion
+
+          python3 -m script.translations develop --all
+
+          echo "=== Ellenőrzés ==="
+          ls -la homeassistant/components/onboarding/translations/ || echo "FIGYELEM: nincs translations mappa"
+          head -30 homeassistant/components/onboarding/translations/en.json || true
+          
+      - name: Replace Dockerfile with your 32-bit version
+        run: |
+          echo "=== Dockerfile másolása ==="
+          cp build-repo/Dockerfile ha-core/Dockerfile
+          echo "Sikeresen másolva: build-repo/Dockerfile → ha-core/Dockerfile"
+          echo ""
+          echo "=== A használt Dockerfile eleje ==="
+          head -n 15 ha-core/Dockerfile
+
+      - name: Pin Cython version in pyproject.toml
+        run: |
+          # Biztonságos csere: a meglévő setuptools sor mellé beszúrja a cython korlátozást
+          sed -i 's/requires = \["setuptools==78.1.1"\]/requires = ["setuptools==78.1.1", "cython<3.2.7"]/' ha-core/pyproject.toml
+
+          # Ellenőrzés (opcionális, de ajánlott)
+          echo "=== Módosított [build-system] rész ==="
+          sed -n '/\[build-system\]/,/^\[/p' ha-core/pyproject.toml | head -20
+
+          echo "ls -las ha-core/rootfs/init"
+          ls -las ha-core/rootfs/init
+
+      # - name: Checking attributes of /init
+      #   run: |
+      #     chmod 755 ha-core/rootfs/init
+      #     chmod 755 ha-core/rootfs/etc/services.d/home-assistant/*
+      #     
+      #     echo "ls -las ha-core/rootfs/init"
+      #     ls -las ha-core/rootfs/init
+      #     ls -las ha-core/rootfs/etc/services.d/home-assistant/*
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push arm/v7
+        uses: docker/build-push-action@v6
+        with:
+          context: ha-core
+          file: ha-core/Dockerfile
+          platforms: linux/arm/v7
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
+          provenance: false
+          # cache-from: type=gha,scope=armv7-${{ needs.prepare.outputs.version }}
+          # cache-to: type=gha,mode=max,scope=armv7-${{ needs.prepare.outputs.version }}
+          # cache-from: type=gha,scope=${{ matrix.platform }}
+          # cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+
+  build-armv6:
+    name: Build arm/v6
+    needs: prepare
+    if: ${{inputs.build_armv6}}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download prepared source
+        uses: actions/download-artifact@v4
+        with:
+          name: ha-core-prepared
+          path: ha-core
+
+      - name: Checking attributes of /init
+        run: |
+          chmod 755 ha-core/rootfs/init
+          chmod 755 ha-core/rootfs/etc/services.d/home-assistant/*
+          
+          echo "ls -las ha-core/rootfs/init"
+          ls -las ha-core/rootfs/init
+          ls -las ha-core/rootfs/etc/services.d/home-assistant/*
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push arm/v6
+        uses: docker/build-push-action@v6
+        with:
+          context: ha-core
+          file: ha-core/Dockerfile
+          platforms: linux/arm/v6
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv6-${{ needs.prepare.outputs.version }}
+          provenance: false
+          # cache-from: type=gha,scope=armv6-${{ needs.prepare.outputs.version }}
+          # cache-to: type=gha,mode=max,scope=armv6-${{ needs.prepare.outputs.version }}
+          
+  
+  create-multi-manifest:
+    name: Create multi-arch manifest
+    needs: [prepare, build-armv7, build-armv6]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build-armv7.result == 'success' || needs.build-armv6.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch image
+        run: |
+
+          IMAGES=""
+
+          if [ "${{ needs.build-armv7.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}"
+            echo "✓ armv7 build sikeres → hozzáadva"
+          else
+            echo "✗ armv7 build sikertelen → kihagyva"
+          fi
+  
+          if [ "${{ needs.build-armv6.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv6-${{ needs.prepare.outputs.version }}"
+            echo "✓ armv6 build sikeres → hozzáadva"
+          else
+            echo "✗ armv6 build sikertelen → kihagyva"
+          fi
+  
+          if [ -z "$IMAGES" ]; then
+            echo "Nincs egyetlen sikeres build sem, kihagyom a manifest létrehozását."
+            exit 0
+          fi
+  
+          echo ""
+          echo "Összefűzés a következő image-ekkel:$IMAGES"
+          echo ""
+  
+          docker buildx imagetools create \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }} \
+            $IMAGES
+    
+          echo ""
+          echo "Kész image-ek:"
+          echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }}"                
+      
+
+  push-dockerhub:
+    name: Push to Docker Hub
+    needs: [prepare, build-armv7, build-armv6]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build-armv7.result == 'success' || needs.build-armv6.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout repository   
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+  
+      - name: Log in to GHCR (olvasáshoz)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+  
+      - name: Create multi-arch image on Docker Hub (latest + version + EXTRA_TAGS)
+        run: |
+          set -euo pipefail
+  
+          VERSION="${{ needs.prepare.outputs.version }}"
+          GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          DOCKERHUB_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-arm32"
+  
+          # Alap tagek - lista végére megy
+          TAGS=(
+            "${DOCKERHUB_IMAGE}:nontested"
+          )          
+  
+          # EXTRA_TAGS feldolgozása (pontosvesszővel elválasztott lista)
+          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
+            IFS=';' read -ra EXTRA <<< "${{ needs.prepare.outputs.tags }}"
+            for tag in "${EXTRA[@]}"; do
+              # üres elemek kihagyása
+              tag=$(echo "$tag" | xargs)
+              # A kettőspontok cseréje kötőjelre a tag nevében, ha véletlenül benne maradna
+              tag="${tag//:/-}"
+              if [ -n "$tag" ]; then
+                TAGS+=("${DOCKERHUB_IMAGE}:${tag}")
+              fi
+            done
+          fi
+          # Lista első pozíciója
+          TAGS+=("${DOCKERHUB_IMAGE}:${VERSION}")
+  
+          echo "Docker Hub tagek:"
+          printf '  %s\n' "${TAGS[@]}"
+          echo ""
+
+          # Összeállítjuk a Buildx imagetools -t paramétereit
+          IMAGETOOLS_ARGS=()
+          for target in "${TAGS[@]}"; do
+            IMAGETOOLS_ARGS+=("--tag" "$target")
+          done
+
+          echo "Docker Hub jaított tagek:"
+          printf '  %s\n' "${IMAGETOOLS_ARGS[@]}"
+          echo ""
+
+          IMAGES=""
+
+          if [ "${{ needs.build-armv7.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}"
+            echo "✓ armv7 build sikeres → hozzáadva"
+          else
+            echo "✗ armv7 build sikertelen → kihagyva"
+          fi
+  
+          if [ "${{ needs.build-armv6.result }}" = "success" ]; then
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv6-${{ needs.prepare.outputs.version }}"
+            echo "✓ armv6 build sikeres → hozzáadva"
+          else
+            echo "✗ armv6 build sikertelen → kihagyva"
+          fi
+  
+          if [ -z "$IMAGES" ]; then
+            echo "Nincs egyetlen sikeres build sem, kihagyom a manifest létrehozását."
+            exit 0
+          fi
+  
+          echo ""
+          echo "Összefűzés a következő image-ekkel:$IMAGES"
+          echo ""
+                  
+          docker buildx imagetools create \
+            "${IMAGETOOLS_ARGS[@]}" \
+            $IMAGES
+            
+          echo ""
+          echo "Kész Docker Hub image-ek:"
+          echo "  • ${DOCKERHUB_IMAGE}:${VERSION}"
+          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
+            IFS=';' read -ra EXTRA <<< "${{ needs.prepare.outputs.tags }}"
+            for tag in "${EXTRA[@]}"; do
+              tag=$(echo "$tag" | xargs)
+              [ -n "$tag" ] && echo "  • ${DOCKERHUB_IMAGE}:${tag}"
+            done
+          fi          
+          
+      - name: Update Docker Hub README
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-arm32
+          readme-filepath: ./README.md
+          short-description: Home Assistant 32-bit (armv7 + armhf) multi-arch image
