@@ -52,6 +52,10 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
 
+          echo "Home Assistant Core: ${VERSION}"
+          echo "version=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+
   build-armv7:
     name: Build arm/v7
     needs: prepare
