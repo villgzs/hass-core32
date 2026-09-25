@@ -13,6 +13,7 @@ ENV UV_HTTP_RETRIES=5
 ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 ENV PIP_EXTRA_INDEX_URL=$PIP_EXTRA_INDEX_URL
 ENV UV_INDEX="https://villgzs.github.io/musllinux-index/"
+ENV UV_NO_BINARY=numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite
 
 LABEL \
     io.hass.type="core" \
@@ -59,6 +60,7 @@ RUN \
     # Install uv at the version pinned in the requirements file
     && pip3 install --no-cache-dir "uv==$(awk -F'==' '/^uv==/{print $2}' homeassistant/requirements.txt)" \
     && uv pip install \
+        --no-binary numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite \
         -r homeassistant/requirements.txt \
     && apk del --no-cache .build-deps
 
