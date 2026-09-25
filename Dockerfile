@@ -14,6 +14,7 @@ ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 ENV PIP_EXTRA_INDEX_URL=$PIP_EXTRA_INDEX_URL
 ENV UV_INDEX="https://villgzs.github.io/musllinux-index/"
 ENV UV_NO_BINARY=numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio
+ENV UV_INDEX_STRATEGY=unsafe-best-match
 
 LABEL \
     io.hass.type="core" \
