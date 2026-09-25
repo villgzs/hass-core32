@@ -11,6 +11,7 @@ ENV UV_CONCURRENT_DOWNLOADS=1
 ENV UV_HTTP_RETRIES=5
 
 ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+ENV PIP_EXTRA_INDEX_URL=$PIP_EXTRA_INDEX_URL
 
 LABEL \
     io.hass.type="core" \
