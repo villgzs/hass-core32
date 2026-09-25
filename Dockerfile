@@ -61,6 +61,8 @@ RUN \
     # Install uv at the version pinned in the requirements file
     && pip3 install --no-cache-dir "uv==$(awk -F'==' '/^uv==/{print $2}' homeassistant/requirements.txt)" \
     && uv pip install \
+        --index-strategy unsafe-best-match \
+        --no-binary numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio \
         -r homeassistant/requirements.txt \
     && apk del --no-cache .build-deps
 
@@ -77,6 +79,8 @@ RUN \
         uv pip install homeassistant/home_assistant_*.whl; \
     fi \
     && uv pip install \
+        --index-strategy unsafe-best-match \
+        --no-binary numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio \
         -r homeassistant/requirements_all.txt \
     && apk del --no-cache .build-deps    
 
