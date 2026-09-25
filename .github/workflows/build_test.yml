@@ -1,4 +1,4 @@
-name: Build 32-bit Home Assistant - CORE - TEST
+name: Build 32-bit CORE - with translations
 
 on:
   workflow_dispatch:
