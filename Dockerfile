@@ -3,7 +3,7 @@
 #
 # To update, run python3 -m script.hassfest -p docker
 #
-ARG BUILD_FROM dockergzs/hass-base-python:3.14-alpine3.24-armv7
+ARG BUILD_FROM=dockergzs/hass-base-python:3.14-alpine3.24-armv7
 # ARG BUILD_FROM=ghcr.io/villgzs/basic-added:latest
 FROM ${BUILD_FROM}
 
