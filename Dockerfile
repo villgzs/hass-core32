@@ -13,7 +13,7 @@ ENV UV_HTTP_RETRIES=5
 ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 ENV PIP_EXTRA_INDEX_URL=$PIP_EXTRA_INDEX_URL
 ENV UV_INDEX="https://villgzs.github.io/musllinux-index/"
-ENV UV_NO_BINARY=numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio
+# ENV UV_NO_BINARY=numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio
 ENV UV_INDEX_STRATEGY=unsafe-best-match
 
 LABEL \
@@ -62,7 +62,6 @@ RUN \
     && pip3 install --no-cache-dir "uv==$(awk -F'==' '/^uv==/{print $2}' homeassistant/requirements.txt)" \
     && uv pip install \
         --index-strategy unsafe-best-match \
-        --no-binary numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio \
         -r homeassistant/requirements.txt \
     && apk del --no-cache .build-deps
 
@@ -80,7 +79,6 @@ RUN \
     fi \
     && uv pip install \
         --index-strategy unsafe-best-match \
-        --no-binary numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio \
         -r homeassistant/requirements_all.txt \
     && apk del --no-cache .build-deps    
 
