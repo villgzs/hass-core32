@@ -1,0 +1,1 @@
+# Translations for HA-CORE
