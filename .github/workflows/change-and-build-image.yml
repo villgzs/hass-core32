@@ -1,3 +1,4 @@
+# Tesztelés - az av==17.0.1 -> av==17.1.0 csere
 name: Build 32-bit Home Assistant - change-and-build-image
 
 on:
@@ -67,7 +68,7 @@ jobs:
       - name: Checkout this repository (a te Dockerfile-od miatt)
         uses: actions/checkout@v4
         with:
-          path: build-repo
+          path: hass-core32-repo
           
       # - name: Download prepared source
         # uses: actions/download-artifact@v4
@@ -157,11 +158,19 @@ jobs:
       - name: Replace Dockerfile with your 32-bit version
         run: |
           echo "=== Dockerfile másolása ==="
-          cp build-repo/Dockerfile ha-core/Dockerfile
-          echo "Sikeresen másolva: build-repo/Dockerfile → ha-core/Dockerfile"
+          cp hass-core32-repo/Dockerfile ha-core/Dockerfile
+          echo "Sikeresen másolva: hass-core32-repo/Dockerfile → ha-core/Dockerfile"
           echo ""
           echo "=== A használt Dockerfile eleje ==="
           head -n 15 ha-core/Dockerfile
+
+      - name: Replace av==17.0.1 to av==17.1.0
+        run: |
+          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/requirements_all.txt
+          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/package_constraints.txt
+          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/stream/manifest.json
+          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/generic/manifest.json
+          # sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/
 
       - name: Pin Cython version in pyproject.toml
         run: |
