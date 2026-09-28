@@ -168,11 +168,11 @@ jobs:
 
       - name: Replace av==17.0.1 to av==17.1.0
         run: |
-          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/requirements_all.txt
-          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/package_constraints.txt
-          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/stream/manifest.json
-          sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/generic/manifest.json
-          # sed -i 's/av=17\.0\.1/av==17\.1\.0/g' ha-core/
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/requirements_all.txt
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/package_constraints.txt
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/stream/manifest.json
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/generic/manifest.json
+          # sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/
           cat ha-core/requirements_all.txt | grep 'av==' || true
 
       - name: Pin Cython version in pyproject.toml
