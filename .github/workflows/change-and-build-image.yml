@@ -1,4 +1,4 @@
-name: Build 32-bit Home Assistant - CORE - TEST
+name: Build 32-bit Home Assistant - change-and-build-image
 
 on:
   workflow_dispatch:
