@@ -21,10 +21,12 @@ on:
       
 env:
   
-  # BUILD_FROM: dockergzs/hass-base-python:3.14-alpine3.24-armv7
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   EXTRA_TAGS: "hass-core32;homeassistant32;arm32;latest"
+  BASE_IMAGE: "ghcr.io/villgzs/basic-added"
+  BASE_IMAGE_TAG: "latest"
+  
 
 jobs:
   prepare:
@@ -212,13 +214,15 @@ jobs:
           context: ha-core
           file: ha-core/Dockerfile
           platforms: linux/arm/v7
-          push: true
+          push: true          
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
           provenance: false
           # cache-from: type=gha,scope=armv7-${{ needs.prepare.outputs.version }}
           # cache-to: type=gha,mode=max,scope=armv7-${{ needs.prepare.outputs.version }}
           # cache-from: type=gha,scope=${{ matrix.platform }}
           # cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          build-args: |
+            BUILD_FROM=${{env.BASE_IMAGE}}:${{env.BASE_IMAGE_TAG}}
 
   build-armv6:
     name: Build arm/v6
