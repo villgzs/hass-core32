@@ -1,5 +1,5 @@
 # Tesztelés - az av==17.0.1 -> av==17.1.0 csere
-name: Build 32-bit Home Assistant - change-and-build-image
+name: Test - Build HA with TRANS av== change
 
 on:
   workflow_dispatch:
