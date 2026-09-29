@@ -383,6 +383,8 @@ jobs:
           GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           DOCKERHUB_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7"
 
+          TAGS=()
+
           # EXTRA_TAGS feldolgozása (pontosvesszővel elválasztott lista)
           if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
             IFS=';' read -ra EXTRA <<< "${{ needs.prepare.outputs.tags }}"
