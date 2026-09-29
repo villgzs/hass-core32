@@ -75,6 +75,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     steps:
       - name: Checkout this repository (a te Dockerfile-od miatt)
         uses: actions/checkout@v4
@@ -97,41 +98,27 @@ jobs:
       - name: Find the Build images workflow run for the latest stable tag
         working-directory: ha-core
         id: findrunid
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ needs.prepare.outputs.version }}"
           echo "Looking for tag: $TAG"
       
-          # Lekérjük a legutóbbi sikeres release event-eket
-          echo "Run - not sure "
           RUN_ID=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
-            --jq ".workflow_runs[] | select(.display_title | test(\"$TAG\")) | .id" \
-            | head -n1)
-          
-          echo "Found run-id (title contains $TAG): $RUN_ID"
-            
-          echo "Run - sure "
-
-          RUN_ID_SURE=$(gh api \
-            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=50" \
             --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
             | head -n1)
-            
-          echo "Found run-id (title contains $TAG): $RUN_ID_SURE"
-                
-          if [ -z "$RUN_ID_SURE" ]; then
+      
+          if [ -z "$RUN_ID" ]; then
             echo "Nem találtam sikeres Build images futást a $TAG taghez"
             exit 1
           fi
-
-          echo "run_id=$RUN_ID"
+      
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-          echo "Found run-id: $RUN_ID (title contains $TAG)"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          echo "Found run-id: $RUN_ID"
+        
       - name: Download translations artifact
+        id: transl
         uses: actions/download-artifact@v4   # vagy újabb
         with:
           name: translations
@@ -402,29 +389,21 @@ jobs:
           echo "Összefűzés a következő image-ekkel:$IMAGES"
           echo ""
 
-          docker buildx imagetools create \
-            --tag "${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7":${{ needs.prepare.outputs.version }} \
-            --tag "${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7":armv7-${{ needs.prepare.outputs.version }} \
-            --tag "${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7":latest \
-            $IMAGES
-
-          echo ""
-          echo "Kész image-ek:"
-          echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }}"
-
           DOCKERHUB_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7"
-
+          VERSION="${{ needs.prepare.outputs.version }}"
+          
           docker buildx imagetools create \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }} \
+            --tag "${DOCKERHUB_IMAGE}:${VERSION}" \
+            --tag "${DOCKERHUB_IMAGE}:armv7-${VERSION}" \
+            --tag "${DOCKERHUB_IMAGE}:latest" \
             $IMAGES
 
           echo ""
           echo "Kész image-ek:"
           echo "  • ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }}"
-            
-          echo ""
-          echo "Kész Docker Hub image-ek:"
-          echo "  • ${DOCKERHUB_IMAGE}:${VERSION}"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
           
       - name: Update Docker Hub README
         uses: peter-evans/dockerhub-description@v4
