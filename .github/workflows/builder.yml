@@ -398,7 +398,7 @@ jobs:
               fi
             done
           fi
-          TAGS+=("${DOCKERHUB_IMAGE}:"armv7-${VERSION}")
+          TAGS+=("${DOCKERHUB_IMAGE}:armv7-${VERSION}")
           # Lista első pozíciója
           TAGS+=("${DOCKERHUB_IMAGE}:${VERSION}")
   
