@@ -1,3 +1,7 @@
+# 2026.SEPT.29: bevezetve az av_replace opció és érvényre is lép, ha kell.
+
+
+
 name: Build 32-bit Home Assistant - CORE
 
 on:
@@ -7,6 +11,11 @@ on:
         description: "Home Assistant Core verzió ( üresen = legfrissebb stable)"
         required: false
         default: ""
+      av_replace:
+        description: "av==17.0 -> av 17.1"
+        type: boolean
+        required: false
+        default: false
       build_armv6:
         description: "Építsünk armv6-ot"
         type: boolean
@@ -20,10 +29,13 @@ on:
       
 env:
   
-  # BUILD_FROM: dockergzs/hass-base-python:3.14-alpine3.24-armv7
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  EXTRA_TAGS: "hass-core32;homeassistant32;arm32;latest"
+  EXTRA_TAGS: "arm32;latest"
+  BASE_IMAGE: "ghcr.io/villgzs/basic-added"
+  BASE_IMAGE_TAG: "latest"
+  # Dockerfile: relative to the repository root (/)
+  DOCKERFILE: ./Dockerfile  
 
 jobs:
   prepare:
@@ -67,7 +79,7 @@ jobs:
       - name: Checkout this repository (a te Dockerfile-od miatt)
         uses: actions/checkout@v4
         with:
-          path: build-repo
+          path: hass-core32-repo
           
       # - name: Download prepared source
         # uses: actions/download-artifact@v4
@@ -157,11 +169,21 @@ jobs:
       - name: Replace Dockerfile with your 32-bit version
         run: |
           echo "=== Dockerfile másolása ==="
-          cp build-repo/Dockerfile ha-core/Dockerfile
-          echo "Sikeresen másolva: build-repo/Dockerfile → ha-core/Dockerfile"
+          cp hass-core32-repo/Dockerfile ha-core/Dockerfile
+          echo "Sikeresen másolva: hass-core32-repo/Dockerfile → ha-core/Dockerfile"
           echo ""
           echo "=== A használt Dockerfile eleje ==="
           head -n 15 ha-core/Dockerfile
+
+      - name: Replace av==17.0.1 to av==17.1.0
+        if: ${{ inputs.av_replace }}
+        run: |
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/requirements_all.txt
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/package_constraints.txt
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/stream/manifest.json
+          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/generic/manifest.json
+          # sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/
+          cat ha-core/requirements_all.txt | grep 'av==' || true
 
       - name: Pin Cython version in pyproject.toml
         run: |
@@ -210,6 +232,8 @@ jobs:
           # cache-to: type=gha,mode=max,scope=armv7-${{ needs.prepare.outputs.version }}
           # cache-from: type=gha,scope=${{ matrix.platform }}
           # cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          build-args: |
+            BUILD_FROM=${{env.BASE_IMAGE}}:${{env.BASE_IMAGE_TAG}}
 
   build-armv6:
     name: Build arm/v6
