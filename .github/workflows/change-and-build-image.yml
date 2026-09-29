@@ -1,6 +1,7 @@
 # Tesztelés - az av==17.0.1 -> av==17.1.0 csere - MŰKÖDIK
 # A létrehozott dockerfile jól betöltődik. (2026.9.4)
 #
+# Az av_replace itt nem érdekes, mert megtörténik mindig -> átvezetve a builder.yml-be
 name: Test - Build HA with TRANS av== change
 
 on:
@@ -10,6 +11,11 @@ on:
         description: "Home Assistant Core verzió ( üresen = legfrissebb stable)"
         required: false
         default: ""
+      av_replace:
+        description: "av==17.0 -> av 17.1"
+        type: boolean
+        required: false
+        default: false
       build_armv6:
         description: "Építsünk armv6-ot"
         type: boolean
@@ -218,7 +224,7 @@ jobs:
           context: ha-core
           file: ha-core/Dockerfile
           platforms: linux/arm/v7
-          push: true          
+          push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
           provenance: false
           # cache-from: type=gha,scope=armv7-${{ needs.prepare.outputs.version }}
