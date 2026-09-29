@@ -79,7 +79,6 @@ RUN \
     fi \
     && uv pip install \
         --index-strategy unsafe-best-match \
-        --no-binary av \
         -r homeassistant/requirements_all.txt \
     && apk del --no-cache .build-deps    
 
