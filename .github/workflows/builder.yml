@@ -381,13 +381,8 @@ jobs:
   
           VERSION="${{ needs.prepare.outputs.version }}"
           GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          DOCKERHUB_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-arm32"
-  
-          # Alap tagek - lista végére megy
-          TAGS=(
-            "${DOCKERHUB_IMAGE}:nontested"
-          )          
-  
+          DOCKERHUB_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7"
+
           # EXTRA_TAGS feldolgozása (pontosvesszővel elválasztott lista)
           if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
             IFS=';' read -ra EXTRA <<< "${{ needs.prepare.outputs.tags }}"
@@ -401,6 +396,7 @@ jobs:
               fi
             done
           fi
+          TAGS+=("${DOCKERHUB_IMAGE}:"armv7-${VERSION}")
           # Lista első pozíciója
           TAGS+=("${DOCKERHUB_IMAGE}:${VERSION}")
   
@@ -443,9 +439,13 @@ jobs:
           echo "Összefűzés a következő image-ekkel:$IMAGES"
           echo ""
                   
+          # docker buildx imagetools create \
+          #   "${IMAGETOOLS_ARGS[@]}" \
+          #   $IMAGES
+
           docker buildx imagetools create \
             "${IMAGETOOLS_ARGS[@]}" \
-            $IMAGES
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
             
           echo ""
           echo "Kész Docker Hub image-ek:"
