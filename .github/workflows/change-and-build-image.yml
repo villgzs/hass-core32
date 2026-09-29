@@ -1,5 +1,5 @@
 # Tesztelés - az av==17.0.1 -> av==17.1.0 csere - MŰKÖDIK
-# A létrehozott dockerfile jól betöltődik.
+# A létrehozott dockerfile jól betöltődik. (2026.9.4)
 #
 name: Test - Build HA with TRANS av== change
 
