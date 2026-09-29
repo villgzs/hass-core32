@@ -1,4 +1,6 @@
-# Tesztelés - az av==17.0.1 -> av==17.1.0 csere
+# Tesztelés - az av==17.0.1 -> av==17.1.0 csere - MŰKÖDIK
+# A létrehozott dockerfile jól betöltődik.
+#
 name: Test - Build HA with TRANS av== change
 
 on:
@@ -26,7 +28,8 @@ env:
   EXTRA_TAGS: "hass-core32;homeassistant32;arm32;latest"
   BASE_IMAGE: "ghcr.io/villgzs/basic-added"
   BASE_IMAGE_TAG: "latest"
-  
+  # Dockerfile: relative to the repository root (/)
+  DOCKERFILE: ./Dockerfile  
 
 jobs:
   prepare:
