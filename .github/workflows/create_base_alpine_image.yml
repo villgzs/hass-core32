@@ -114,11 +114,16 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      - name: List folders
+        working-directory: ${{env.HA_REPO_PATH}}
+        run: |
+          ls -lasR || true
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: ${{env.HA_REPO_PATH}}/${{env.FILE_PATH}}
+          context: ./${{env.HA_REPO_PATH}}/${{env.FILE_PATH}}
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
