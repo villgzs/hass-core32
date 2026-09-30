@@ -24,7 +24,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}_basealpine
+  IMAGE_NAME: ${{ github.repository }}-basealpine
   HA_REPO: home-assistant/docker-base
   HA_REPO_PATH: ha-base-repo
   FILE_PATH: alpine
