@@ -15,7 +15,7 @@ on:
         description: "Dockerfile foltozás:"
         required: false
         type: boolean
-        default: false
+        default: true
       test_build:
         description: "Teszt üzemmód:"
         required: false
@@ -86,13 +86,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{env.HA_REPO}}
-          ref: ${{ inputs.required_version }}
+          ref: ${{ needs.prepare.outputs.version }}
           path: ${{env.HA_REPO_PATH}}
 
-      - name: Patch application
+      - name: Patch application - for Alpine Dockerfile
         if: ${{ inputs.patch_files }}
+        working-directory: ${{env.HA_REPO_PATH}}/${{env.FILE_PATH}}
         run: |
-          echo "NO any PATCH yet."
+          echo "Alpine Dockerfile"
+          patch -p1 < ../../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_basealpine_${{needs.prepare.outputs.version}}.patch
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -114,10 +116,16 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: List folders
-        working-directory: ${{env.HA_REPO_PATH}}
+      - name: copy Dockerfile 
+        working-directory: ${{env.THIS_REPO_PATH}}
         run: |
-          ls -lasR || true
+          mkdir -p Dockerfiles
+          cp ../${{env.HA_REPO_PATH}}/${{env.FILE_PATH}}/Dockerfile ./Dockerfiles/Dockerfile_${{env.HA_REPO_PATH}}_${{needs.prepare.outputs.version}}
+
+      - name: List folders 
+        working-directory: ${{env.HA_REPO_PATH}}/${{env.FILE_PATH}}
+        run: |
+          ls -lR || true          
 
       - name: Build and push by digest
         id: build
@@ -131,7 +139,7 @@ jobs:
           build-args: |
             BASE_ALPINE_VERSION=${{ needs.prepare.outputs.version }}
             TEST_BUILD=${{ inputs.test_build }}
-
+            
       - name: Export digest
         if: inputs.push
         run: |
