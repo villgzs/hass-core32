@@ -10,7 +10,7 @@ on:
       required_version:
         description: "Home Assistant Base Images verzió (üres = legfrissebb stable)"
         required: false
-        default: "2026.05.0"
+        default: ""
       patch_files:
         description: "Dockerfile foltozás:"
         required: false
@@ -25,14 +25,42 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}_basealpine
-  HABASE_REPO: "home-assistant/docker-base"
-  HABASE_REPO_PATH: "ha-base-repo"
-  THIS_REPO: "villgzs/hass-core32"
-  THIS_REPO_PATH: "hass-core32-repo"
+  HA_REPO: home-assistant/docker-base
+  HA_REPO_PATH: ha-base-repo
+  THIS_REPO: villgzs/hass-core32
+  THIS_REPO_PATH: hass-core32-repo
 
 jobs:
+  prepare:
+    name: Prepare source
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ha-lat.outputs.version }}
+      tags: ${{steps.ha-lat.outputs.tags}}
+    steps:
+      - name: Get latest stable version
+        id: ha-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.required_version }}" ]; then
+            VERSION="${{ inputs.required_version }}"
+            DOCKERTAGS="arm32"
+          else
+            VERSION=$(gh api repos/${{env.HA_REPO}}/releases/latest --jq '.tag_name')
+            DOCKERTAGS="latest"
+          fi
+          
+          echo "Home Assistant version: ${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+          
+          echo "version=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+          
   build:
     name: Build ${{ matrix.architecture }}
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -56,9 +84,14 @@ jobs:
       - name: Checkout official Home Assistant repository
         uses: actions/checkout@v4
         with:
-          repository: ${{env.HABASE_REPO}}
+          repository: ${{env.HA_REPO}}
           ref: ${{ inputs.required_version }}
-          path: ${{env.HABASE_REPO_PATH}}
+          path: ${{env.HA_REPO_PATH}}
+
+      - name: Patch application
+        if: ${{ inputs.patch_files }}
+        run: |
+          echo "NO any PATCH yet."
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -84,13 +117,13 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{env.HA_REPO_PATH}}
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
           build-args: |
-            BASE_ALPINE_VERSION=${{ inputs.base_alpine_version }}
+            BASE_ALPINE_VERSION=${{ needs.prepare.outputs.version }}
             TEST_BUILD=${{ inputs.test_build }}
 
       - name: Export digest
@@ -112,7 +145,7 @@ jobs:
   merge:
     name: Merge Multi-Arch Manifest
     runs-on: ubuntu-latest
-    needs: build
+    needs: [prepare,build]
     if: inputs.push
     permissions:
       packages: write
@@ -134,13 +167,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
             type=sha,prefix=sha-
-            type=raw,value=${{inputs.base_alpine_version}},enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+            type=raw,value=${{needs.prepare.outputs.version}}
+            type=raw,value=${{needs.prepare.outputs.tags}}
 
       - name: Log in to Registry
         uses: docker/login-action@v3
