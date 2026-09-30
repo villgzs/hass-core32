@@ -34,7 +34,7 @@ Prerequisited: Step No.3 - basic-added
 ![Architecture](https://img.shields.io/badge/Architecture-ARMv7-orange)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/builder_new.yml?label=Build)
 
-A custom Docker build of **Home Assistant Core** optimized for 32-bit ARM architectures (`linux/arm/v7` *and probably later `linux/arm/v6`*), such as older Raspberry Pi models. This repository automatically fetches the latest stable Home Assistant Core source, replaces the standard container configuration, and builds a multi-architecture container image.
+A custom Docker build of **Home Assistant Core** optimized exclusively for **32-bit ARM (armv7)** architecture. It is designed for older Raspberry Pi models, **Orange Pi Zero** and similar single-board computers, as well as Android phones running in a **Termux + udocker** environment. This repository automatically fetches the latest stable Home Assistant Core source, replaces the standard container configuration, and builds a container image.
 
 ---
 
@@ -42,7 +42,7 @@ A custom Docker build of **Home Assistant Core** optimized for 32-bit ARM archit
 
 - **32-Bit ARM Support:** Pre-built binaries targeting `linux/arm/v7` (Raspberry Pi 2/3/4 32-bit OS) *and probably later `linux/arm/v6` (Raspberry Pi 1/Zero).*
 - **Fast Dependency Management:** Uses [`uv`](https://github.com/astral-sh/uv) for high-speed Python package installation during container builds.
-- **Integrated `go2rtc`:** Includes a pre-installed `go2rtc` binary (`v1.9.14`) for ultra-low latency camera streaming.
+- **Integrated `go2rtc`:** Includes a pre-installed `go2rtc` binary for ultra-low latency camera streaming.
 - **Automated Nightly Builds:** GitHub Actions workflow automatically tracks and builds the latest official stable Home Assistant release daily.
 - **Multi-Arch Manifest:** Automatically published as a unified image tag supporting multiple 32-bit platforms.
 
