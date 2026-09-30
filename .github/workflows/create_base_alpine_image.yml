@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Create Base Alpine Image
 
 on:
   workflow_dispatch:
@@ -7,19 +7,28 @@ on:
         description: "Push image to registry"
         type: boolean
         default: true
-      base_alpine_version:
+      required_version:
         description: "Home Assistant Base Images verzió (üres = legfrissebb stable)"
         required: false
-        default: "2026.06.1"
+        default: "2026.05.0"
+      patch_files:
+        description: "Dockerfile foltozás:"
+        required: false
+        type: boolean
+        default: false
       test_build:
-        description: "Teszt üzemmód "
+        description: "Teszt üzemmód:"
         required: false
         type: boolean
         default: true
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository }}_basealpine
+  HABASE_REPO: "home-assistant/docker-base"
+  HABASE_REPO_PATH: "ha-base-repo"
+  THIS_REPO: "villgzs/hass-core32"
+  THIS_REPO_PATH: "hass-core32-repo"
 
 jobs:
   build:
@@ -38,8 +47,18 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - name: Checkout repository
+      - name: Checkout this repository
         uses: actions/checkout@v4
+        with:
+          repository: ${{env.THIS_REPO}}
+          path: ${{env.THIS_REPO_PATH}}
+
+      - name: Checkout official Home Assistant repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HABASE_REPO}}
+          ref: ${{ inputs.required_version }}
+          path: ${{env.HABASE_REPO_PATH}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
