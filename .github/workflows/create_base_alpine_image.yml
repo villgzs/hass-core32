@@ -91,10 +91,10 @@ jobs:
 
       - name: Patch application - for Alpine Dockerfile
         if: ${{ inputs.patch_files }}
-        working-directory: ${{env.HA_REPO_PATH}}/${{env.FILE_PATH}}
+        working-directory: ${{env.HA_REPO_PATH}}
         run: |
           echo "Alpine Dockerfile"
-          patch -p1 < ../../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_basealpine_${{needs.prepare.outputs.version}}.patch
+          patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_basealpine_${{needs.prepare.outputs.version}}.patch
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
