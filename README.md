@@ -22,6 +22,10 @@ Latest official image can be found here:
 USE AT YOUR OWN RISK.
 ---
 
+![Docker Image Version](https://img.shields.io/github/v/release/home-assistant/core?label=Home%20Assistant%20Core&color=blue)
+![Architecture](https://img.shields.io/badge/Architecture-ARMv7-orange)
+![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/builder_new.yml?label=Build)
+
 Prerequisited: Step No.3 - basic-added
 
 ### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
@@ -29,10 +33,6 @@ Prerequisited: Step No.3 - basic-added
 ### STEP No.4 
 
 # Home Assistant Core (32-bit ARM Build)
-
-![Docker Image Version](https://img.shields.io/github/v/release/home-assistant/core?label=Home%20Assistant%20Core&color=blue)
-![Architecture](https://img.shields.io/badge/Architecture-ARMv7-orange)
-![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/builder_new.yml?label=Build)
 
 A custom Docker build of **Home Assistant Core** optimized exclusively for **32-bit ARM (armv7)** architecture. It is designed for older Raspberry Pi models, **Orange Pi Zero** and similar single-board computers, as well as Android phones running in a **Termux + udocker** environment. This repository automatically fetches the latest stable Home Assistant Core source, replaces the standard container configuration, and builds a container image.
 
