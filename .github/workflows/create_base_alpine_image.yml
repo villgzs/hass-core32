@@ -27,6 +27,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}_basealpine
   HA_REPO: home-assistant/docker-base
   HA_REPO_PATH: ha-base-repo
+  FILE_PATH: alpine
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32-repo
 
@@ -117,7 +118,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: ${{env.HA_REPO_PATH}}
+          context: ${{env.HA_REPO_PATH}}/${{env.FILE_PATH}}
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
