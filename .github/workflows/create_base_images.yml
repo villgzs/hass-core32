@@ -27,7 +27,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-basealpine
+  ALPINE_IMAGE_NAME: ${{ github.repository }}-basealpine
+  PYTHON_IMAGE_NAME: ${{ github.repository }}-basepython
   HA_REPO: home-assistant/docker-base
   HA_REPO_PATH: ha-base-repo
   ALPINE_FILE_PATH: alpine
@@ -102,6 +103,13 @@ jobs:
             echo "✗ Az image még nem létezik → build szükséges"
             echo "alpine_exists=false" >> $GITHUB_OUTPUT
           fi          
+
+      - name: Checkout official Home Assistant repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HA_REPO}}
+          ref: ${{ steps.ha-lat.outputs.version }}
+          path: ${{env.HA_REPO_PATH}}
           
   build-alpine:
     name: Build alpine ${{ matrix.architecture }}
@@ -126,13 +134,6 @@ jobs:
         with:
           repository: ${{env.THIS_REPO}}
           path: ${{env.THIS_REPO_PATH}}
-
-      - name: Checkout official Home Assistant repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{env.HA_REPO}}
-          ref: ${{ needs.prepare.outputs.version }}
-          path: ${{env.HA_REPO_PATH}}
 
       - name: Patch application - for Alpine Dockerfile
         if: ${{ inputs.patch_files }}
@@ -159,13 +160,15 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}
 
       - name: copy Dockerfile 
         working-directory: ${{env.THIS_REPO_PATH}}
         run: |
+          echo "Copy back - Dockerfile"
           mkdir -p Dockerfiles
-          cp ../${{env.HA_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}/Dockerfile ./Dockerfiles/Dockerfile_${{env.HA_REPO_PATH}}_${{needs.prepare.outputs.version}}
+          cp ../${{env.HA_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}/Dockerfile ./Dockerfiles/Dockerfile_alpline_${{env.HA_REPO_PATH}}_${{needs.prepare.outputs.version}}
+          git status || true
 
       - name: List folders 
         working-directory: ${{env.HA_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}
@@ -180,7 +183,7 @@ jobs:
           file: ./${{env.HA_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
           build-args: |
             BASE_ALPINE_VERSION=${{ needs.prepare.outputs.version }}
             TEST_BUILD=${{ inputs.test_build }}
@@ -227,7 +230,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}
           tags: |
             type=sha,prefix=sha-
             type=raw,value=${{needs.prepare.outputs.version}}
@@ -244,16 +247,16 @@ jobs:
         working-directory: /tmp/digests
         run: |
           TAGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
-          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}@sha256:%s ' *)
           docker buildx imagetools create ${TAGS} ${DIGESTS}
 
       - name: Summary
         run: |
           echo "### Multi-Arch Manifest Published :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo "Image: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
 
   build-python:                                    # nevezd el, ahogy szeretnéd
-    name: Következő lépés (python build / stb.)
+    name: Build python ${{ matrix.platform }} 
     needs: [prepare, merge_alpine]
     if: |
       always() &&
@@ -282,9 +285,6 @@ jobs:
           PLATFORM_TAG=$(echo "${{ matrix.platform }}" | tr '/' '-')
           echo "platform_tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -306,21 +306,21 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}
 
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./Dockerfile_${{needs.prepare.outputs.version}}
+          context: ${{ env.HA_REPO_PATH }}/${{ env.PYTHON_FILE_PATH }}
+          file: ${{ env.HA_REPO_PATH }}/${{ env.PYTHON_FILE_PATH }}/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push) }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push) }}
           provenance: true
           sbom: true
           build-args: |
-            BASE_IMAGE=ghcr.io/villgzs/basic-alpine
+            BASE_IMAGE=ghcr.io/villgzs/hass-core32-basealpine
             BASE_VERSION=${{needs.prepare.outputs.version}}
 
       - name: Export digest
@@ -391,7 +391,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -399,20 +399,20 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha,prefix=sha-
-            type=raw,value=${{inputs.basic-alpine-version}},enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+            type=raw,value=${{needs.prepare.outputs.version}},enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
-          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{inputs.basic-alpine-version}}
+            $(printf '${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}@sha256:%s ' *)
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}:${{needs.prepare.outputs.version}}
 
       - name: Image summary
         run: |
           echo "### Docker Image built successfully :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
