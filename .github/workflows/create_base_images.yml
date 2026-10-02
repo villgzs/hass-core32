@@ -367,7 +367,7 @@ jobs:
       always() &&
       needs.prepare.result == 'success' &&
       needs.build-python.result == 'success' &&
-      github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push)
+      inputs.push
     runs-on: ubuntu-latest
     
     permissions:
@@ -404,14 +404,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+          tags: |            
             type=sha,prefix=sha-
-            type=raw,value=${{needs.prepare.outputs.version}},enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+            type=raw,value=${{needs.prepare.outputs.version}}
+            type=raw,value=${{needs.prepare.outputs.tags}}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
