@@ -104,12 +104,7 @@ jobs:
             echo "alpine_exists=false" >> $GITHUB_OUTPUT
           fi          
 
-      - name: Checkout official Home Assistant repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{env.HA_REPO}}
-          ref: ${{ steps.ha-lat.outputs.version }}
-          path: ${{env.HA_REPO_PATH}}
+      
           
   build-alpine:
     name: Build alpine ${{ matrix.architecture }}
@@ -134,6 +129,13 @@ jobs:
         with:
           repository: ${{env.THIS_REPO}}
           path: ${{env.THIS_REPO_PATH}}
+
+      - name: Checkout official Home Assistant repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HA_REPO}}
+          ref: ${{ needs.prepare.outputs.version }}
+          path: ${{env.HA_REPO_PATH}}
 
       - name: Patch application - for Alpine Dockerfile
         if: ${{ inputs.patch_files }}
@@ -284,6 +286,19 @@ jobs:
           # A / jeleket kicseréljük - karakterre a tag-ekhez (pl. linux-arm-v7)
           PLATFORM_TAG=$(echo "${{ matrix.platform }}" | tr '/' '-')
           echo "platform_tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.THIS_REPO}}
+          path: ${{env.THIS_REPO_PATH}}
+
+      - name: Checkout official Home Assistant repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HA_REPO}}
+          ref: ${{ needs.prepare.outputs.version }}
+          path: ${{env.HA_REPO_PATH}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
