@@ -142,11 +142,27 @@ jobs:
         run: |
           TAG="${{ needs.prepare.outputs.version }}"
           echo "Looking for tag: $TAG"
-      
-          RUN_ID=$(gh api \
-            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=50" \
-            --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
-            | head -n1)
+
+          RUN_ID=""
+          for i in 1 2 3 4 5; do
+          
+              # RUN_ID=$(gh api \
+              #   "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=50" \
+              #   --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
+              #   | head -n1)
+
+              RUN_ID=$(gh api \
+                "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=success&per_page=50" \
+                --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
+                | head -n1)
+
+              if [ -n "$RUN_ID" ]; then
+                  break
+                fi
+
+              echo "Még nem található (próba $i/5). Várunk 90 másodpercet..."
+              sleep 3
+          done
       
           if [ -z "$RUN_ID" ]; then
             echo "Nem találtam sikeres Build images futást a $TAG taghez"
