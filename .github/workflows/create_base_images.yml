@@ -201,7 +201,7 @@ jobs:
         if: inputs.push
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.architecture }}
+          name: digests-alpine-${{ matrix.architecture }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -222,7 +222,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: digests-alpine-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -349,7 +349,7 @@ jobs:
         if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push)
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ steps.prepare.outputs.platform_tag }}
+          name: digests-python-${{ steps.prepare.outputs.platform_tag }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -382,14 +382,14 @@ jobs:
       - name: Debug info
         run: |
           echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
-          echo "merge_alpine  = ${{ needs.merge_alpine.result }}"
+          
           echo "version       = ${{ needs.prepare.outputs.version }}"
           
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: digests-python-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
