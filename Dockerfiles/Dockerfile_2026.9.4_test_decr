@@ -109,13 +109,17 @@ COPY --from=ghcr.io/alexxit/go2rtc:1.9.14@sha256:675c318b23c06fd862a61d262240c9a
      /usr/local/bin/go2rtc /bin/go2rtc
 
 # Csak a runtime system library-k (build tool NINCS)
-RUN apk add --no-cache \
-        libffi libjpeg-turbo zlib freetype \
-        ffmpeg-libs libavc1394 \
-        openblas libgfortran \
-        libxml2 libxslt \
-        mariadb-connector-c postgresql-libs \
-    && go2rtc --version
+# RUN apk add --no-cache \
+#         libffi libjpeg-turbo zlib freetype \
+#         ffmpeg-libs libavc1394 \
+#         openblas libgfortran \
+#         libxml2 libxslt \
+#         mariadb-connector-c postgresql-libs \
+#     && go2rtc --version
+
+RUN \
+    # Verify go2rtc can be executed
+    go2rtc --version
 
 # Python környezet átmásolása a corebuilderből
 # (a pontos python verzió a base image-től függ – ellenőrizd: python3 -c "import sys; print(sys.version)")
