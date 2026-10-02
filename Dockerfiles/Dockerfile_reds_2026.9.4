@@ -61,7 +61,7 @@ RUN \
     && pip3 install --no-cache-dir "uv==$(awk -F'==' '/^uv==/{print $2}' homeassistant/requirements.txt)" \
     && uv pip install \
         --no-build \
-        -r homeassistant/requirements.txt \
+        -r homeassistant/requirements.txt
     
 COPY requirements_all.txt home_assistant_frontend-* home_assistant_intents-* homeassistant/
 
