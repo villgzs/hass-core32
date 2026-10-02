@@ -1,0 +1,128 @@
+# syntax=docker/dockerfile:1
+
+#BASE                BASIC-ALPINE 3.23      (Ha-Do-Be 2026.05.0)
+#BASE-PYTHON         BASIC-PYTHON 3.14 (.5) (Ha-Do-Be 2026.05.0)
+#HOMEASSISTANT-BASE  BASIC-ADDED            (Ha-Do    2026.07.0)
+ARG BUILD_FROM=ghcr.io/villgzs/basic-added:sha-f92282c
+
+# =============================================================================
+# STAGE 1 – corebuilder (fordítás)
+# =============================================================================
+FROM ${BUILD_FROM} AS corebuilder
+
+ENV UV_SYSTEM_PYTHON=true \
+    UV_NO_CACHE=true \
+    UV_CONCURRENT_DOWNLOADS=1 \
+    UV_HTTP_RETRIES=5 \
+    UV_INDEX_STRATEGY=unsafe-best-match
+
+ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+ENV PIP_EXTRA_INDEX_URL=$PIP_EXTRA_INDEX_URL \
+    UV_INDEX=$PIP_EXTRA_INDEX_URL
+
+WORKDIR /usr/src
+
+# Constraints (cython stb.)
+RUN echo "cython<3.2.9" > /etc/pip-build-constraints.txt
+ENV PIP_BUILD_CONSTRAINT=/etc/pip-build-constraints.txt \
+    UV_BUILD_CONSTRAINT=/etc/pip-build-constraints.txt \
+    UV_CONSTRAINT=/etc/pip-build-constraints.txt
+
+# --- Core requirements ---
+COPY --parents requirements.txt homeassistant/package_constraints.txt homeassistant/
+
+RUN --mount=type=cache,target=/var/cache/apk \
+    --mount=type=cache,target=/root/.cache \
+    apk add --no-cache libffi libjpeg-turbo zlib freetype \
+    && apk add --no-cache --virtual .build-deps \
+        cmake make ninja meson gcc g++ musl-dev \
+        rust cargo linux-headers \
+        libffi-dev jpeg-dev zlib-dev freetype-dev \
+        ffmpeg-dev \
+    && pip3 install --no-cache-dir "uv==$(awk -F'==' '/^uv==/{print $2}' homeassistant/requirements.txt)" \
+    && uv pip install \
+        --index-strategy unsafe-best-match \
+        -r homeassistant/requirements.txt \
+    && apk del .build-deps
+
+# --- All requirements (integrations) ---
+COPY requirements_all.txt home_assistant_frontend-* home_assistant_intents-* homeassistant/
+
+RUN --mount=type=cache,target=/var/cache/apk \
+    --mount=type=cache,target=/root/.cache \
+    apk add --no-cache --virtual .build-deps \
+        autoconf cmake make ninja gcc g++ \
+        musl-dev rust cargo linux-headers \
+        libffi-dev jpeg-dev zlib-dev freetype-dev ffmpeg-dev \
+        pkgconf gfortran openblas-dev \
+        libxml2-dev libxslt-dev \
+        mariadb-dev postgresql-dev glib-dev \
+        openssl-dev mariadb-connector-c-dev \
+    && apk add --no-cache \
+        ffmpeg-libs libavc1394 openblas libgfortran \
+        libxml2 libxslt mariadb-connector-c postgresql-libs \
+    && if ls homeassistant/home_assistant_*.whl 1>/dev/null 2>&1; then \
+         uv pip install homeassistant/home_assistant_*.whl; \
+       fi \
+    && uv pip install \
+        --index-strategy unsafe-best-match \
+        -r homeassistant/requirements_all.txt \
+    && apk del .build-deps
+
+# --- Home Assistant Core ---
+COPY --parents LICENSE* README* homeassistant/ pyproject.toml homeassistant/
+
+RUN uv pip install ./homeassistant \
+    && python3 -m compileall homeassistant/homeassistant
+
+# Opcionális takarítás a corebuilderben (kevesebb másolnivaló)
+RUN find /usr/local/lib/python3.* -type d \( -name tests -o -name test -o -name __pycache__ \) \
+        -exec rm -rf {} + 2>/dev/null || true \
+    && find /usr/local/lib/python3.* -name "*.so" -exec strip --strip-unneeded {} + 2>/dev/null || true
+
+# =============================================================================
+# STAGE 2 – final (futás)
+# =============================================================================
+FROM ${BUILD_FROM}
+
+LABEL \
+    io.hass.type="core" \
+    org.opencontainers.image.authors="The Home Assistant Authors" \
+    org.opencontainers.image.description="Open-source home automation platform running on Python 3" \
+    org.opencontainers.image.documentation="https://www.home-assistant.io/docs/" \
+    org.opencontainers.image.licenses="Apache-2.0" \
+    org.opencontainers.image.title="Home Assistant" \
+    org.opencontainers.image.url="https://www.home-assistant.io/"
+
+ENV \
+    S6_SERVICES_GRACETIME=240000 \
+    UV_SYSTEM_PYTHON=true \
+    UV_NO_CACHE=true
+
+WORKDIR /usr/src
+
+# S6 rootfs
+COPY rootfs /
+
+# go2rtc
+COPY --from=ghcr.io/alexxit/go2rtc:1.9.14@sha256:675c318b23c06fd862a61d262240c9a63436b4050d177ffc68a32710d9e05bae \
+     /usr/local/bin/go2rtc /bin/go2rtc
+
+# Csak a runtime system library-k (build tool NINCS)
+RUN apk add --no-cache \
+        libffi libjpeg-turbo zlib freetype \
+        ffmpeg-libs libavc1394 \
+        openblas libgfortran \
+        libxml2 libxslt \
+        mariadb-connector-c postgresql-libs \
+    && go2rtc --version
+
+# Python környezet átmásolása a corebuilderből
+# (a pontos python verzió a base image-től függ – ellenőrizd: python3 -c "import sys; print(sys.version)")
+COPY --from=corebuilder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
+COPY --from=corebuilder /usr/local/bin /usr/local/bin
+
+# HA forrás (ha a compileall / package struktúra miatt kell)
+COPY --from=corebuilder /usr/src/homeassistant /usr/src/homeassistant
+
+WORKDIR /config
