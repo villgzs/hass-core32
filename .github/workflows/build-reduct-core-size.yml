@@ -35,7 +35,7 @@ env:
   BASE_IMAGE: "ghcr.io/villgzs/basic-added"
   BASE_IMAGE_TAG: "latest"
   # Dockerfile: relative to the repository root (/)
-  DOCKERFILE: Dockerfiles/Dockerfile_2026.9.4_test_decr 
+  DOCKERFILE: Dockerfiles/Dockerfile_reds_2026.9.4 
 
 jobs:
   prepare:
