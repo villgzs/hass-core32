@@ -43,8 +43,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ha.outputs.version }}
-      tags: ${{steps.ha.outputs.tags}}
+      tags: ${{ steps.ha.outputs.tags }}
       armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
+      run_id: ${{ steps.findrunid.outputs.run_id }}
     steps:
       - name: Get latest Home Assistant stable version
         id: ha
@@ -106,41 +107,13 @@ jobs:
             echo "armv7image_ready=false" >> $GITHUB_OUTPUT
           fi
 
-  build-armv7:
-    name: Build arm/v7
-    needs: prepare
-    if: needs.prepare.outputs.armv7image_ready != 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      actions: read
-    steps:
-      - name: Checkout this repository (a te Dockerfile-od miatt)
-        uses: actions/checkout@v4
-        with:
-          path: hass-core32-repo
-          
-      # - name: Download prepared source
-        # uses: actions/download-artifact@v4
-        # with:
-        #   name: ha-core-prepared
-        #   path: ha-core
-
-      - name: Checkout official Home Assistant core
-        uses: actions/checkout@v4
-        with:
-          repository: home-assistant/core
-          ref: ${{ needs.prepare.outputs.version }}
-          path: ha-core
-
       - name: Find the Build images workflow run for the latest stable tag
         working-directory: ha-core
         id: findrunid
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ needs.prepare.outputs.version }}"
+          TAG="${{ steps.ha.outputs.version }}"
           echo "Looking for tag: $TAG"
 
           RUN_ID=""
@@ -171,7 +144,35 @@ jobs:
       
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
           echo "Found run-id: $RUN_ID"
-        
+
+  build-armv7:
+    name: Build arm/v7
+    needs: prepare
+    if: needs.prepare.outputs.armv7image_ready != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - name: Checkout this repository (a te Dockerfile-od miatt)
+        uses: actions/checkout@v4
+        with:
+          path: hass-core32-repo
+          
+      # - name: Download prepared source
+        # uses: actions/download-artifact@v4
+        # with:
+        #   name: ha-core-prepared
+        #   path: ha-core
+
+      - name: Checkout official Home Assistant core
+        uses: actions/checkout@v4
+        with:
+          repository: home-assistant/core
+          ref: ${{ needs.prepare.outputs.version }}
+          path: ha-core
+      
       - name: Download translations artifact
         id: transl
         uses: actions/download-artifact@v4   # vagy újabb
@@ -179,7 +180,7 @@ jobs:
           name: translations
           github-token: ${{ secrets.GITHUB_TOKEN }}   # public repo esetén elég
           repository: home-assistant/core
-          run-id: ${{ steps.findrunid.outputs.run_id }}
+          run-id: ${{ needs.prepare.outputs.run_id }}
           path: ha-core
 
       - name: Extract
