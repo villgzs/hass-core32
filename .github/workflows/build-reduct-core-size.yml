@@ -44,9 +44,8 @@ jobs:
     outputs:
       version: ${{ steps.ha.outputs.version }}
       tags: ${{steps.ha.outputs.tags}}
+      armv7image_exists: ${{ steps.check.outputs.exists }}
     steps:
-      
-          
       - name: Get latest Home Assistant stable version
         id: ha
         env:
@@ -68,9 +67,37 @@ jobs:
           echo "version=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
 
+      - name: Check if armv7 image already exists on GHCR
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ha.outputs.version }}"
+          IMAGE="ghcr.io/${{ github.repository }}:armv7-${VERSION}"
+
+          echo "Ellenőrzés: $IMAGE"
+
+          # A GitHub Packages API-val kérdezzük le a taget
+          # (a GITHUB_TOKEN-nek packages:read joga van)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://ghcr.io/v2/${{ github.repository }}/manifests/armv7-${VERSION}")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik (HTTP $HTTP_CODE) → build szükséges"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "armv7image_exists=$(cat $GITHUB_OUTPUT | grep exists | cut -d= -f2)" >> $GITHUB_STEP_SUMMARY
+
   build-armv7:
     name: Build arm/v7
     needs: prepare
+    if: needs.prepare.outputs.armv7image_exists != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
