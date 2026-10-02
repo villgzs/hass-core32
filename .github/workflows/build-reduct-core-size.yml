@@ -88,10 +88,10 @@ jobs:
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
 
-          if [ "$HTTP_CODE" != "200" ]; then
+          if [ "$HTTP_CODE" -eq 404 ]; then
             echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
-            echo "exists=false" >> $GITHUB_OUTPUT
-            exit 1
+            echo "armv7image_ready=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
           EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
