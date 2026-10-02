@@ -44,7 +44,7 @@ jobs:
     outputs:
       version: ${{ steps.ha.outputs.version }}
       tags: ${{steps.ha.outputs.tags}}
-      armv7image_exists: ${{ steps.check.outputs.exists }}
+      armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
     steps:
       - name: Get latest Home Assistant stable version
         id: ha
@@ -73,26 +73,38 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.ha.outputs.version }}"
-          IMAGE="ghcr.io/${{ github.repository }}:armv7-${VERSION}"
+          TAG="armv7-${VERSION}"
+          PACKAGE="hass-core32"          # a ghcr.io/villgzs/hass-core32 package neve
+          OWNER="${{ github.repository_owner }}"
 
-          echo "Ellenőrzés: $IMAGE"
+          echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
 
-          # A GitHub Packages API-val kérdezzük le a taget
-          # (a GITHUB_TOKEN-nek packages:read joga van)
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://ghcr.io/v2/${{ github.repository }}/manifests/armv7-${VERSION}")
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
 
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✓ Az image már létezik → kihagyjuk a buildet"
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "✗ Az image még nem létezik (HTTP $HTTP_CODE) → build szükséges"
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
             echo "exists=false" >> $GITHUB_OUTPUT
+            exit 1
           fi
 
-          echo "armv7image_exists=$(cat $GITHUB_OUTPUT | grep exists | cut -d= -f2)" >> $GITHUB_STEP_SUMMARY
+          EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
+            [.[] | select(.metadata.container.tags[]? == $tag)] | length
+          ')
+
+          if [ "$EXISTS" -gt 0 ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "armv7image_ready=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik → build szükséges"
+            echo "armv7image_ready=false" >> $GITHUB_OUTPUT
+          fi
 
   build-armv7:
     name: Build arm/v7
