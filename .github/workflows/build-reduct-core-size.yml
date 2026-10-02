@@ -109,7 +109,7 @@ jobs:
   build-armv7:
     name: Build arm/v7
     needs: prepare
-    if: needs.prepare.outputs.armv7image_exists != 'true'
+    if: needs.prepare.outputs.armv7image_ready != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
