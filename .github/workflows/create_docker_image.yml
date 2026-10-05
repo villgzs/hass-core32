@@ -549,7 +549,7 @@ jobs:
         with:
           repository: ${{env.HA_DOCKER_REPO}}
           ref: ${{ needs.prepare.outputs.dockerver }}
-          path: ${{env.HA_DOCKER_REPO}}
+          path: ${{env.HA_DOCKER_REPO_PATH}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
