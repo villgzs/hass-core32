@@ -1,0 +1,5 @@
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,0 +1,2 @@
++ARG EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
++ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
