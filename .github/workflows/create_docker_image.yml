@@ -98,10 +98,10 @@ jobs:
           fi
           
           echo "Home Assistant version: ${VERSION}"
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "dockerver=${VERSION}" >> $GITHUB_OUTPUT
           echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
           
-          echo "version=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "dockerver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
 
       - name: Check if alpine multi manifest image already exists on GHCR
