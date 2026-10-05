@@ -1,0 +1,676 @@
+# ALPINE: 
+# PYTHON: 3.14 (according PYTHON_FILE_PATH)
+
+name: Create Base Added Image(homeassistant-base)
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push image to registry"
+        type: boolean
+        default: true
+      required_base_version:
+        description: "Home Assistant Base Images verzió (üres = legfrissebb stable)"
+        required: false
+        default: ""
+      required_docker_version:
+        description: "Home Assistant Docker verzió (üres = legfrissebb stable)"
+        required: false
+        default: ""
+      patch_files:
+        description: "Dockerfile foltozás:"
+        required: false
+        type: boolean
+        default: true
+      test_build:
+        description: "Teszt üzemmód:"
+        required: false
+        type: boolean
+        default: true
+
+env:
+  REGISTRY: ghcr.io
+  ALPINE_IMAGE_NAME: ${{ github.repository }}-basealpine
+  PYTHON_IMAGE_NAME: ${{ github.repository }}-basepython
+  HABASE_IMAGE_NAME: ${{ github.repository }}-baseadded
+  HA_ALPINE_REPO: home-assistant/docker-base
+  HA_ALPINE_REPO_PATH: ha-base-repo
+  HA_DOCKER_REPO: home-assistant/docker
+  HA_DOCKER_REPO_PATH: ha-docker-repo
+  ALPINE_FILE_PATH: alpine
+  PYTHON_FILE_PATH: python/3.14
+  HABASE_FILE_PATH: .  
+  THIS_REPO: villgzs/hass-core32
+  THIS_REPO_PATH: hass-core32-repo
+
+jobs:
+  prepare:
+    name: Prepare source
+    runs-on: ubuntu-latest
+    outputs:
+      basever: ${{ steps.ha-ba-lat.outputs.basever }}
+      dockerver: ${{ steps.ha-do-lat.outputs.dockerver }}
+      base_tags: ${{steps.ha-ba-lat.outputs.base_tags}}
+      docker_tags: ${{steps.ha-do-lat.outputs.docker_tags}}
+      alpine_exists: ${{steps.check-alpine.outputs.alpine_exists}}
+      python_exists: ${{steps.check-python.outputs.python_exists}}
+    steps:
+      - name: Get latest stable base version
+        id: ha-ba-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.required_base_version }}" ]; then
+            VERSION="${{ inputs.required_base_version }}"
+            DOCKERTAGS="arm32"
+          else
+            VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
+            DOCKERTAGS="latest"
+          fi
+          
+          echo "Home Assistant version: ${VERSION}"
+          echo "basever=${VERSION}" >> $GITHUB_OUTPUT
+          echo "base_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+          
+          echo "basever=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "base_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+
+      - name: Get latest stable docker version
+        id: ha-do-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.required_docker_version }}" ]; then
+            VERSION="${{ inputs.required_docker_version }}"
+            DOCKERTAGS="arm32"
+          else
+            VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
+            DOCKERTAGS="latest"
+          fi
+          
+          echo "Home Assistant version: ${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+          
+          echo "version=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+
+      - name: Check if alpine multi manifest image already exists on GHCR
+        id: check-alpine
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
+          TAG="${VERSION}"
+          PACKAGE="${{env.ALPINE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
+          OWNER="${{ github.repository_owner }}"
+
+          echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 404 ]; then
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
+            echo "alpine_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
+            [.[] | select(.metadata.container.tags[]? == $tag)] | length
+          ')
+
+          if [ "$EXISTS" -gt 0 ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "alpine_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik → build szükséges"
+            echo "alpine_exists=false" >> $GITHUB_OUTPUT
+          fi          
+
+      - name: Check if python multi manifest image already exists on GHCR
+        id: check-python
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
+          TAG="${VERSION}"
+          PACKAGE="${{env.PYTHON_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
+          OWNER="${{ github.repository_owner }}"
+
+          echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 404 ]; then
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
+            echo "alpine_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
+            [.[] | select(.metadata.container.tags[]? == $tag)] | length
+          ')
+
+          if [ "$EXISTS" -gt 0 ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "alpine_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik → build szükséges"
+            echo "alpine_exists=false" >> $GITHUB_OUTPUT
+          fi
+          
+  build-alpine:
+    name: Build alpine ${{ matrix.architecture }}
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: armv7
+            platform: linux/arm/v7
+          - architecture: armhf
+            platform: linux/arm/v6
+    if: needs.prepare.outputs.alpine_exists != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.THIS_REPO}}
+          path: ${{env.THIS_REPO_PATH}}
+
+      - name: Checkout official Home Assistant repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HA_ALPINE_REPO}}
+          ref: ${{ needs.prepare.outputs.basever }}
+          path: ${{env.HA_ALPINE_REPO_PATH}}
+
+      - name: Patch application - for Alpine Dockerfile
+        if: ${{ inputs.patch_files }}
+        working-directory: ${{env.HA_ALPINE_REPO_PATH}}
+        run: |
+          echo "Alpine Dockerfile"
+          patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_basealpine_${{needs.prepare.outputs.basever}}.patch
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        if: inputs.push
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}
+
+      - name: copy Dockerfile 
+        working-directory: ${{env.THIS_REPO_PATH}}
+        run: |
+          echo "Copy back - Dockerfile"
+          mkdir -p Dockerfiles
+          cp ../${{env.HA_ALPINE_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}/Dockerfile ./Dockerfiles/Dockerfile_alpline_${{env.HA_ALPINE_REPO_PATH}}_${{needs.prepare.outputs.basever}}
+          git status || true
+
+      - name: List folders 
+        working-directory: ${{env.HA_ALPINE_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}
+        run: |
+          ls -lR || true          
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{env.HA_ALPINE_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}
+          file: ./${{env.HA_ALPINE_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          build-args: |
+            BASE_ALPINE_VERSION=${{ needs.prepare.outputs.basever }}
+            TEST_BUILD=${{ inputs.test_build }}
+            
+      - name: Export digest
+        if: inputs.push
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: inputs.push
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-alpine-${{ matrix.architecture }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge_alpine:
+    name: Merge Alpine Multi-Arch Manifest
+    if: | 
+      needs.prepare.outputs.alpine_exists != 'true' &&
+      inputs.push
+    runs-on: ubuntu-latest
+    needs: [prepare,build-alpine]
+    
+    permissions:
+      packages: write
+      id-token: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-alpine-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (final tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=${{needs.prepare.outputs.basever}}
+            type=raw,value=${{needs.prepare.outputs.base_tags}}
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          TAGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}@sha256:%s ' *)
+          docker buildx imagetools create ${TAGS} ${DIGESTS}
+
+      - name: Summary
+        run: |
+          echo "### Multi-Arch Manifest Published :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+
+  build-python:                                    # nevezd el, ahogy szeretnéd
+    name: Build python ${{ matrix.platform }} 
+    needs: [prepare, merge_alpine]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (
+        needs.prepare.outputs.alpine_exists == 'true' ||
+        needs.merge_alpine.result == 'success'
+      )
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/arm/v7
+          - linux/arm/v6
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Prepare platform string
+        id: preplat
+        run: |
+          # A / jeleket kicseréljük - karakterre a tag-ekhez (pl. linux-arm-v7)
+          PLATFORM_TAG=$(echo "${{ matrix.platform }}" | tr '/' '-')
+          echo "platform_tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.THIS_REPO}}
+          path: ${{env.THIS_REPO_PATH}}
+
+      - name: Checkout official Home Assistant repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HA_ALPINE_REPO}}
+          ref: ${{ needs.prepare.outputs.basever }}
+          path: ${{env.HA_ALPINE_REPO_PATH}}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+
+      - name: Log in to the Container registry
+        if: inputs.push
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.HA_ALPINE_REPO_PATH }}/${{ env.PYTHON_FILE_PATH }}
+          file: ${{ env.HA_ALPINE_REPO_PATH }}/${{ env.PYTHON_FILE_PATH }}/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          provenance: false
+          sbom: false
+          build-args: |
+            BASE_IMAGE=ghcr.io/villgzs/hass-core32-basealpine
+            BASE_VERSION=${{needs.prepare.outputs.basever}}
+
+      - name: Export digest
+        if: inputs.push
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: inputs.push
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-python-${{ steps.preplat.outputs.platform_tag }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+          
+      - name: Debug info
+        run: |
+          echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
+          echo "merge_alpine  = ${{ needs.merge_alpine.result }}"
+          echo "version       = ${{ needs.prepare.outputs.basever }}"
+
+  merge-python:                 
+    name: Merge-python manifests
+    needs: [prepare, build-python]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.build-python.result == 'success' &&
+      inputs.push
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Debug info
+        run: |
+          echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
+          
+          echo "version       = ${{ needs.prepare.outputs.basever }}"
+          
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-python-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}
+          tags: |            
+            type=sha,prefix=sha-
+            type=raw,value=${{needs.prepare.outputs.basever}}
+            type=raw,value=${{needs.prepare.outputs.base_tags}}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}@sha256:%s ' *)
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}:${{needs.prepare.outputs.basever}}
+
+      - name: Image summary
+        run: |
+          echo "### Docker Image built successfully :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          date >> $GITHUB_STEP_SUMMARY
+
+  build-added:                                    # HABASE-home-assistant base image for core
+    name: Build python ${{ matrix.platform }} 
+    needs: [prepare, merge-python]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (
+        needs.prepare.outputs.python_exists == 'true' ||
+        needs.merge-python.result == 'success'
+      )
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/arm/v7
+          - linux/arm/v6
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Prepare platform string
+        id: preplat
+        run: |
+          # A / jeleket kicseréljük - karakterre a tag-ekhez (pl. linux-arm-v7)
+          PLATFORM_TAG=$(echo "${{ matrix.platform }}" | tr '/' '-')
+          echo "platform_tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.THIS_REPO}}
+          path: ${{env.THIS_REPO_PATH}}
+
+      - name: Checkout official Home Assistant docker repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HA_DOCKER_REPO}}
+          ref: ${{ needs.prepare.outputs.dockerver }}
+          path: ${{env.HA_DOCKER_REPO}}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+
+      - name: Log in to the Container registry
+        if: inputs.push
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.HA_DOCKER_REPO_PATH }}/${{ env.HABASE_FILE_PATH }}
+          file: ${{ env.HA_DOCKER_REPO_PATH }}/${{ env.HABASE_FILE_PATH }}/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          provenance: false
+          sbom: false
+          build-args: |
+            BASE_IMAGE=ghcr.io/villgzs/${{env.PYTHON_IMAGE_NAME}}
+            BASE_VERSION=${{needs.prepare.outputs.basever}}
+            BUILD_FROM=${BASE_IMAGE}:${BASE_VERSION}
+
+      - name: Export digest
+        if: inputs.push
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: inputs.push
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-python-${{ steps.preplat.outputs.platform_tag }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+          
+      - name: Debug info
+        run: |
+          echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
+          echo "python_exists = ${{ needs.prepare.outputs.python_exists }}"
+          echo "merge_python  = ${{ needs.merge-python.result }}"
+          echo "version       = ${{ needs.prepare.outputs.dockerver }}"
+
+  merge-added:                 
+    name: Merge-python manifests
+    needs: [prepare, build-python]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.build-python.result == 'success' &&
+      inputs.push
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Debug info
+        run: |
+          echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
+          echo "python_exists = ${{ needs.prepare.outputs.python_exists }}"
+          echo "version       = ${{ needs.prepare.outputs.dockerver }}"
+          
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-python-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}
+          tags: |            
+            type=sha,prefix=sha-
+            type=raw,value=${{needs.prepare.outputs.dockerver}}
+            type=raw,value=${{needs.prepare.outputs.docker_tags}}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}@sha256:%s ' *)
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{needs.prepare.outputs.dockerver}}
+
+      - name: Image summary
+        run: |
+          echo "### Docker Image built successfully :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          date >> $GITHUB_STEP_SUMMARY          
+
+  
+          
+      
+
+      
