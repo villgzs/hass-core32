@@ -1,13 +1,19 @@
 --- a/Dockerfile
 +++ b/Dockerfile
-@@ -1,0 +1,2 @@
+@@ -1,4 +1,6 @@
+ ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.08.0
 +ARG EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 +ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
-@@
-RUN \
-    --mount=type=bind,src=./requirements.txt,dst=/tmp/requirements.txt \
-    --mount=type=cache,target=/root/.cache/pip,sharing=locked,id=pip-cache-${BUILD_FROM} \
--   pip3 install --only-binary=:all: \
-+   pip3 install --only-binary=:all: \
-+       --extra-index-url https://villgzs.github.io/musllinux-index/ \
-        -r /tmp/requirements.txt
+ ####
+ ## Builder stage for ssocr, installs to /opt/ssocr
+ FROM ${BUILD_FROM} AS ssocr-builder
+@@ -158,7 +160,8 @@ RUN \
+ RUN \
+     --mount=type=bind,src=./requirements.txt,dst=/tmp/requirements.txt \
+     --mount=type=cache,target=/root/.cache/pip,sharing=locked,id=pip-cache-${BUILD_FROM} \
+-    pip3 install --only-binary=:all: \
++    pip3 install --only-binary=:all: \
++        --extra-index-url https://villgzs.github.io/wheels-index/ \
+         -r /tmp/requirements.txt
+ 
+ WORKDIR /usr/src/
