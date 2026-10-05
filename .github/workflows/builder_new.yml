@@ -28,11 +28,10 @@ on:
   #     - main
       
 env:
-  
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   EXTRA_TAGS: "arm32;latest"
-  BASE_IMAGE: "ghcr.io/villgzs/basic-added"
+  HABASE_IMAGE_NAME: ${{ github.repository }}-baseadded
   BASE_IMAGE_TAG: "latest"
   # Dockerfile: relative to the repository root (/)
   DOCKERFILE: ./Dockerfile  
@@ -220,7 +219,7 @@ jobs:
           # cache-from: type=gha,scope=${{ matrix.platform }}
           # cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
           build-args: |
-            BUILD_FROM=${{env.BASE_IMAGE}}:${{env.BASE_IMAGE_TAG}}
+            BUILD_FROM=${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{env.BASE_IMAGE_TAG}}
 
   build-armv6:
     name: Build arm/v6
