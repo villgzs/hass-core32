@@ -3,3 +3,11 @@
 @@ -1,0 +1,2 @@
 +ARG EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 +ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+@@
+ RUN \
+     --mount=type=bind,src=./requirements.txt,dst=/tmp/requirements.txt \
+     --mount=type=cache,target=/root/.cache/pip,sharing=locked,id=pip-cache-${BUILD_FROM} \
+-    pip3 install --only-binary=:all: \
++    pip3 install --only-binary=:all: \
++        --extra-index-url https://villgzs.github.io/musllinux-index/ \
+         -r /tmp/requirements.txt
