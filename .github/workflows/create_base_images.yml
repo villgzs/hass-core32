@@ -189,6 +189,7 @@ jobs:
           build-args: |
             BASE_ALPINE_VERSION=${{ needs.prepare.outputs.version }}
             TEST_BUILD=${{ inputs.test_build }}
+            EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
             
       - name: Export digest
         if: inputs.push
