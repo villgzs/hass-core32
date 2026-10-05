@@ -93,7 +93,7 @@ jobs:
             VERSION="${{ inputs.required_docker_version }}"
             DOCKERTAGS="arm32"
           else
-            VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
+            VERSION=$(gh api repos/${{env.HA_DOCKER_REPO}}/releases/latest --jq '.tag_name')
             DOCKERTAGS="latest"
           fi
           
@@ -112,6 +112,7 @@ jobs:
           VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
           TAG="${VERSION}"
           PACKAGE="${{env.ALPINE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
+          PACKAGE="${PACKAGE#*/}
           OWNER="${{ github.repository_owner }}"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
@@ -151,6 +152,7 @@ jobs:
           VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
           TAG="${VERSION}"
           PACKAGE="${{env.PYTHON_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
+          PACKAGE="${PACKAGE#*/}
           OWNER="${{ github.repository_owner }}"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
@@ -166,7 +168,7 @@ jobs:
 
           if [ "$HTTP_CODE" -eq 404 ]; then
             echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
-            echo "alpine_exists=false" >> $GITHUB_OUTPUT
+            echo "python_exists=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -176,10 +178,10 @@ jobs:
 
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
-            echo "alpine_exists=true" >> $GITHUB_OUTPUT
+            echo "python_exists=true" >> $GITHUB_OUTPUT
           else
             echo "✗ Az image még nem létezik → build szükséges"
-            echo "alpine_exists=false" >> $GITHUB_OUTPUT
+            echo "python_exists=false" >> $GITHUB_OUTPUT
           fi
           
   build-alpine:
