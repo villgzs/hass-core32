@@ -415,7 +415,7 @@ jobs:
           provenance: false
           sbom: false
           build-args: |
-            BASE_IMAGE=ghcr.io/villgzs/hass-core32-basealpine
+            BASE_IMAGE=ghcr.io/${{env.ALPINE_IMAGE_NAME}}
             BASE_VERSION=${{needs.prepare.outputs.basever}}
 
       - name: Export digest
@@ -586,9 +586,9 @@ jobs:
           provenance: false
           sbom: false
           build-args: |
-            BASE_IMAGE=ghcr.io/villgzs/${{env.PYTHON_IMAGE_NAME}}
+            BASE_IMAGE=ghcr.io/${{env.PYTHON_IMAGE_NAME}}
             BASE_VERSION=${{needs.prepare.outputs.basever}}
-            BUILD_FROM=ghcr.io/villgzs/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
+            BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
 
       - name: Export digest
         if: inputs.push
