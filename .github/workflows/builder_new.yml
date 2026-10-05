@@ -2,7 +2,7 @@
 # Áthozva a builder_new.yml-ből 2026.OKT.01.-én. Fő módostás a dockerfile forrása.
 # 
 
-name: Build Reduced size CORE-32-bit Home Assistant
+name: NEW-Build Reduced size CORE-32-bit Home Assistant
 
 on:
   workflow_dispatch:
