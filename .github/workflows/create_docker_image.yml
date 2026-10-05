@@ -112,7 +112,7 @@ jobs:
           VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
           TAG="${VERSION}"
           PACKAGE="${{env.ALPINE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
-          PACKAGE="${PACKAGE#*/}
+          PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
@@ -152,7 +152,7 @@ jobs:
           VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
           TAG="${VERSION}"
           PACKAGE="${{env.PYTHON_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
-          PACKAGE="${PACKAGE#*/}
+          PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
