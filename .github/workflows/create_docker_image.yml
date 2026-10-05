@@ -552,6 +552,15 @@ jobs:
           ref: ${{ needs.prepare.outputs.dockerver }}
           path: ${{env.HA_DOCKER_REPO_PATH}}
 
+      - name: Patch application - for Docker Dockerfile
+        if: ${{ inputs.patch_files }}
+        working-directory: ${{ env.HA_DOCKER_REPO_PATH }}
+        run: |
+          echo "Docker Dockerfile"
+          patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_docker_${{needs.prepare.outputs.dockerver}}.patch   
+
+          head -n 20 Dockerfile
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -591,6 +600,7 @@ jobs:
             BASE_VERSION=${{needs.prepare.outputs.basever}}
             BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
             EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+            PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 
       - name: Export digest
         if: inputs.push
