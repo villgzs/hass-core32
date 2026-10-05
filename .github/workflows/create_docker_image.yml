@@ -340,11 +340,13 @@ jobs:
     needs: [prepare, merge_alpine]
     if: |
       always() &&
+      needs.prepare.outputs.python_exists == 'false' &&
       needs.prepare.result == 'success' &&
       (
         needs.prepare.outputs.alpine_exists == 'true' ||
         needs.merge_alpine.result == 'success'
-      )
+      ) 
+      
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
