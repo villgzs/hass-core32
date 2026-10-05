@@ -273,7 +273,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
           provenance: false
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          # outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           # cache-from: type=gha,scope=armv7-${{ needs.prepare.outputs.version }}
           # cache-to: type=gha,mode=max,scope=armv7-${{ needs.prepare.outputs.version }}
           # cache-from: type=gha,scope=${{ matrix.platform }}
