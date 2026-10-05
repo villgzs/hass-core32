@@ -19,6 +19,7 @@ ARG PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 ENV PIP_EXTRA_INDEX_URL=$PIP_EXTRA_INDEX_URL
 # ENV PIP_INDEX_URL=$PIP_EXTRA_INDEX_URL
 ENV UV_INDEX="https://villgzs.github.io/musllinux-index/"
+ENV UV_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
 # ENV UV_NO_BINARY=numpy,scipy,pandas,scikit-learn,scikit-image,numba,llvmlite,pyarrow,grpcio
 # ENV UV_INDEX_STRATEGY=unsafe-best-match
 
@@ -61,6 +62,7 @@ RUN \
     # Install uv at the version pinned in the requirements file
     && pip3 install --no-cache-dir "uv==$(awk -F'==' '/^uv==/{print $2}' homeassistant/requirements.txt)" \
     && uv pip install \
+        --index https://villgzs.github.io/musllinux-index/ \
         --no-build \
         -r homeassistant/requirements.txt
     
@@ -73,6 +75,7 @@ RUN \
     fi \
     && uv pip install \
         --no-build \
+        --index https://villgzs.github.io/musllinux-index/ \
         -r homeassistant/requirements_all.txt    
 
 
@@ -83,7 +86,7 @@ COPY --parents LICENSE* README* homeassistant/ pyproject.toml homeassistant/
 RUN \
     echo "Third... Setup Home Assistant Core" \
     && uv pip install \
-        --extra-index-url https://villgzs.github.io/musllinux-index/ \
+        --index https://villgzs.github.io/musllinux-index/ \
         -e ./homeassistant \
     && python3 -m compileall \
         homeassistant/homeassistant
