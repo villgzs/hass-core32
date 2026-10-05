@@ -1,7 +1,11 @@
 # ALPINE: 
 # PYTHON: 3.14 (according PYTHON_FILE_PATH)
 
-name: Create Base Added Image(homeassistant-base)
+# from home-assistant/docker-base - alpine
+# from home-assistant/docker-base - python
+# from home-assistant/docker      - docker
+
+name: Create ha-docker Image(homeassistant-base/basic-added)
 
 on:
   workflow_dispatch:
