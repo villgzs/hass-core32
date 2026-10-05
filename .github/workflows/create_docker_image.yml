@@ -44,7 +44,7 @@ env:
   HA_DOCKER_REPO_PATH: ha-docker-repo
   ALPINE_FILE_PATH: alpine
   PYTHON_FILE_PATH: python/3.14
-  HABASE_FILE_PATH: .  
+  HABASE_FILE_PATH: 
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32-repo
 
@@ -588,7 +588,7 @@ jobs:
           build-args: |
             BASE_IMAGE=ghcr.io/villgzs/${{env.PYTHON_IMAGE_NAME}}
             BASE_VERSION=${{needs.prepare.outputs.basever}}
-            BUILD_FROM=${BASE_IMAGE}:${BASE_VERSION}
+            BUILD_FROM=ghcr.io/villgzs/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
 
       - name: Export digest
         if: inputs.push
