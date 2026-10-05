@@ -556,10 +556,10 @@ jobs:
         if: ${{ inputs.patch_files }}
         working-directory: ${{ env.HA_DOCKER_REPO_PATH }}
         run: |
-          echo "Docker Dockerfile"
+          echo "Patch Docker Dockerfile"
           patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_docker_${{needs.prepare.outputs.dockerver}}.patch   
-
-          head -n 20 Dockerfile
+          echo "---------"
+          cat Dockerfile
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
