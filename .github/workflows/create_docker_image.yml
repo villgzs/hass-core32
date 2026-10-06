@@ -222,6 +222,8 @@ jobs:
           echo "Alpine Dockerfile"
           patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_basealpine_${{needs.prepare.outputs.basever}}.patch
 
+          cat ./alpine/Dockerfile || true
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
