@@ -164,20 +164,27 @@ jobs:
       - name: Checkout this repository (a te Dockerfile-od miatt)
         uses: actions/checkout@v4
         with:
-          path: THIS_REPO_PATH
-          
-      # - name: Download prepared source
-        # uses: actions/download-artifact@v4
-        # with:
-        #   name: ha-core-prepared
-        #   path: ha-core
+          path: ${{env.THIS_REPO_PATH}}
 
       - name: Checkout official Home Assistant core
         uses: actions/checkout@v4
         with:
           repository: home-assistant/core
           ref: ${{ needs.prepare.outputs.version }}
-          path: ha-core
+          path: ${{env.HA_CORE_REPO_PATH}}
+
+      - name: Patch dockerfile
+        working-directory: ${{env.HA_CORE_REPO_PATH}}
+        run: |
+          pwd
+          ls -las ./*
+          echo "----"
+          ls -las ../*
+          echo "=== Patching Dockerfile ==="
+          patch Dockerfile < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_${{needs.prepare.outputs.version}}.patch
+
+          echo "=== A használt Dockerfile ==="
+          cat Dockerfile || true
       
       - name: Download translations artifact
         id: transl
@@ -225,14 +232,7 @@ jobs:
           echo "=== A használt Dockerfile eleje ==="
           head -n 15 ha-core/Dockerfile
 
-      - name: Patch dockerfile
-        working-directory: ha-core
-        run: |
-          echo "=== Patching Dockerfile ==="
-          patch Dockerfile < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_${{needs.prepare.outputs.version}}.patch
 
-          echo "=== A használt Dockerfile ==="
-          cat Dockerfile || true
 
       - name: Replace av==17.0.1 to av==17.1.0
         if: ${{ inputs.av_replace }}
