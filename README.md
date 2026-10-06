@@ -26,11 +26,7 @@ USE AT YOUR OWN RISK.
 ![Architecture](https://img.shields.io/badge/Architecture-ARMv7-orange)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/builder_new.yml?label=Build)
 
-Prerequisited: Step No.3 - basic-added
-
 ### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
-
-### STEP No.4 
 
 # Home Assistant Core (32-bit ARM Build)
 
