@@ -33,9 +33,13 @@ env:
   IMAGE_NAME: ${{ github.repository }}-new
   EXTRA_TAGS: "arm32;latest"
   BASE_IMAGE: "ghcr.io/villgzs/hass-core32-baseadded"
-  BASE_IMAGE_TAG: "latest"
+  BASE_IMAGE_TAG: "2026.7.0"
   # Dockerfile: relative to the repository root (/)
   DOCKERFILE: Dockerfiles/Dockerfile_reds_2026.9.4 
+  HA_CORE_REPO: homeassistant/core
+  HA_CORE_REPO_PATH: ha-core
+  THIS_REPO: villgzs/hass-core32
+  THIS_REPO_PATH: hass-core32-repo
   
 
 jobs:
@@ -160,7 +164,7 @@ jobs:
       - name: Checkout this repository (a te Dockerfile-od miatt)
         uses: actions/checkout@v4
         with:
-          path: hass-core32-repo
+          path: THIS_REPO_PATH
           
       # - name: Download prepared source
         # uses: actions/download-artifact@v4
@@ -212,13 +216,23 @@ jobs:
           head -30 homeassistant/components/onboarding/translations/en.json || true
           
       - name: Replace Dockerfile with your 32-bit version
+        if: failure()
         run: |
           echo "=== Dockerfile másolása ==="
-          cp hass-core32-repo/${{env.DOCKERFILE}} ha-core/Dockerfile
-          echo "Sikeresen másolva: hass-core32-repo/${{env.DOCKERFILE}} → ha-core/Dockerfile"
+          cp THIS_REPO_PATH/${{env.DOCKERFILE}} ha-core/Dockerfile
+          echo "Sikeresen másolva: THIS_REPO_PATH/${{env.DOCKERFILE}} → ha-core/Dockerfile"
           echo ""
           echo "=== A használt Dockerfile eleje ==="
           head -n 15 ha-core/Dockerfile
+
+      - name: Patch dockerfile
+        working-directory: ha-core
+        run: |
+          echo "=== Patching Dockerfile ==="
+          patch Dockerfile < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_${{needs.prepare.outputs.version}}.patch
+
+          echo "=== A használt Dockerfile ==="
+          cat Dockerfile || true
 
       - name: Replace av==17.0.1 to av==17.1.0
         if: ${{ inputs.av_replace }}
@@ -233,7 +247,7 @@ jobs:
       - name: Pin Cython version in pyproject.toml
         run: |
           # Biztonságos csere: a meglévő setuptools sor mellé beszúrja a cython korlátozást
-          sed -i 's/requires = \["setuptools==78.1.1"\]/requires = ["setuptools==78.1.1", "cython<3.2.7"]/' ha-core/pyproject.toml
+          sed -i 's/requires = \["setuptools==78.1.1"\]/requires = ["setuptools==78.1.1", "cython<3.2.9"]/' ha-core/pyproject.toml
 
           # Ellenőrzés (opcionális, de ajánlott)
           echo "=== Módosított [build-system] rész ==="
@@ -241,15 +255,6 @@ jobs:
 
           echo "ls -las ha-core/rootfs/init"
           ls -las ha-core/rootfs/init
-
-      # - name: Checking attributes of /init
-      #   run: |
-      #     chmod 755 ha-core/rootfs/init
-      #     chmod 755 ha-core/rootfs/etc/services.d/home-assistant/*
-      #     
-      #     echo "ls -las ha-core/rootfs/init"
-      #     ls -las ha-core/rootfs/init
-      #     ls -las ha-core/rootfs/etc/services.d/home-assistant/*
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -273,11 +278,6 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
           provenance: false
-          # outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
-          # cache-from: type=gha,scope=armv7-${{ needs.prepare.outputs.version }}
-          # cache-to: type=gha,mode=max,scope=armv7-${{ needs.prepare.outputs.version }}
-          # cache-from: type=gha,scope=${{ matrix.platform }}
-          # cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
           build-args: |
             BUILD_FROM=${{env.BASE_IMAGE}}:${{env.BASE_IMAGE_TAG}}
 
