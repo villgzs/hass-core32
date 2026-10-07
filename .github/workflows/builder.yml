@@ -177,9 +177,9 @@ jobs:
         working-directory: ${{env.HA_CORE_REPO_PATH}}
         run: |
           pwd
-          ls -las ./*
+          ls -las ./
           echo "----"
-          ls -las ../*
+          ls -las ../
           echo "=== Patching Dockerfile ==="
           patch Dockerfile < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_${{needs.prepare.outputs.version}}.patch
 
