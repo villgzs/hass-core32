@@ -30,7 +30,7 @@ on:
 env:
   
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-new
+  IMAGE_NAME: ${{ github.repository }}
   EXTRA_TAGS: "arm32;latest"
   BASE_IMAGE: "ghcr.io/villgzs/hass-core32-baseadded"
   BASE_IMAGE_TAG: "2026.07.0"
