@@ -1,3 +1,8 @@
+Docker wheels builder start locally:
+```
+docker run --rm -it --platform linux/arm/v7 --entrypoint /bin/bash ghcr.io/villgzs/wheels32bit/armv7/musllinux_1_2/cp314
+```
+
 ```
 bash docker_start_hass.sh ghcr.io/villgzs/hass-core32:2026.9.4 run
 ```
