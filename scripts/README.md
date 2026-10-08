@@ -1,4 +1,4 @@
-Docker wheels builder start locally:
+Docker wheels builder start locally (overwrite entrypoint):
 ```
 docker run --rm -it --platform linux/arm/v7 --entrypoint /bin/bash ghcr.io/villgzs/wheels32bit/armv7/musllinux_1_2/cp314
 ```
