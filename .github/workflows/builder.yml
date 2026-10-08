@@ -245,20 +245,21 @@ jobs:
           cat ha-core/requirements_all.txt | grep 'av==' || true
 
       - name: Pin Cython version in pyproject.toml
+        working-directory: ha-core
         if: failure()
         run: |
           # Biztonságos csere: a meglévő setuptools sor mellé beszúrja a cython korlátozást
-          sed -i 's/requires = \["setuptools==78.1.1"\]/requires = ["setuptools==78.1.1", "cython<3.2.9"]/' ha-core/pyproject.toml
+          sed -i 's/requires = \["setuptools==78.1.1"\]/requires = ["setuptools==78.1.1", "cython<3.2.9"]/' pyproject.toml
 
           # Ellenőrzés (opcionális, de ajánlott)
           echo "=== Módosított [build-system] rész ==="
-          sed -n '/\[build-system\]/,/^\[/p' ha-core/pyproject.toml | head -20
+          sed -n '/\[build-system\]/,/^\[/p' pyproject.toml | head -20
 
-          echo "ls -las ha-core/rootfs/init"
-          ls -las ha-core/rootfs/init
+          echo "ls -las rootfs/init"
+          ls -las rootfs/init
 
       - name: Downgrade pywaze in requirements_all.txt
-        working-directory: ha-core-repo
+        working-directory: ha-core
         run: |
           echo "Downgrade előtt"
           grep -Ev '^[[:space:]]*($|#)' requirements_all.txt | wc -l
