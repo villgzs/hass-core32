@@ -68,6 +68,8 @@ jobs:
       docker_tags: ${{steps.ha-do-lat.outputs.docker_tags}}
       alpine_exists: ${{steps.check-alpine.outputs.alpine_exists}}
       python_exists: ${{steps.check-python.outputs.python_exists}}
+      baseadded_exists: ${{steps.check-hadockerbase.outputs.baseadded_exists}}
+      wheeler_exists: ${{steps.check-wheeler.outputs.wheeler_exists}}
     steps:
       - name: Get latest stable base version
         id: ha-ba-lat
@@ -212,6 +214,86 @@ jobs:
             echo "✗ Az image még nem létezik → build szükséges"
             echo "python_exists=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Check if ha-docker-base multi manifest image already exists on GHCR
+        id: check-hadockerbase
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ha-do-lat.outputs.dockerver }}"
+          TAG="${VERSION}"
+          PACKAGE="${{env.HABASE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
+          PACKAGE="${PACKAGE#*/}"
+          OWNER="${{ github.repository_owner }}"
+
+          echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 404 ]; then
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
+            echo "baseadded_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
+            [.[] | select(.metadata.container.tags[]? == $tag)] | length
+          ')
+
+          if [ "$EXISTS" -gt 0 ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "baseadded_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik → build szükséges"
+            echo "baseadded_exists=false" >> $GITHUB_OUTPUT
+          fi     
+
+      - name: Check if wheeler multi manifest image already exists on GHCR
+        id: check-wheeler
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ha-we-lat.outputs.wheelsver }}"
+          TAG="${VERSION}"
+          PACKAGE="${{env.WHEELS_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
+          PACKAGE="${PACKAGE#*/}"
+          OWNER="${{ github.repository_owner }}"
+
+          echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 404 ]; then
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
+            echo "wheeler_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
+            [.[] | select(.metadata.container.tags[]? == $tag)] | length
+          ')
+
+          if [ "$EXISTS" -gt 0 ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "wheeler_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik → build szükséges"
+            echo "wheeler_exists=false" >> $GITHUB_OUTPUT
+          fi               
           
   build-alpine:
     name: Build alpine ${{ matrix.architecture }}
