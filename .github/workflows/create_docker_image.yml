@@ -913,7 +913,7 @@ jobs:
         if: inputs.push
         uses: actions/upload-artifact@v4
         with:
-          name: digests-added-${{ steps.preplat.outputs.platform_tag }}
+          name: digests-wheeler-${{ steps.preplat.outputs.platform_tag }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -932,8 +932,7 @@ jobs:
     if: |
       always() &&
       needs.prepare.result == 'success' &&
-      needs.build-wheeler.result == 'success' &&
-      inputs.push
+      needs.build-wheeler.result == 'success' 
     runs-on: ubuntu-latest
     
     permissions:
@@ -952,7 +951,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-added-*
+          pattern: digests-wheeler-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -969,7 +968,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}
           tags: |            
             type=sha,prefix=sha-
             type=raw,value=${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.wheelsver}}
@@ -978,8 +977,9 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}@sha256:%s ' *)
-          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{needs.prepare.outputs.wheelsver}}
+            $(printf '${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}@sha256:%s ' *)
+            
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}:${{needs.prepare.outputs.wheelsver}}
 
       - name: Image summary
         run: |
