@@ -296,7 +296,7 @@ jobs:
           fi               
           
   build-alpine:
-    name: Build alpine ${{ matrix.architecture }}
+    name: Build alpine - base-alpine ${{ matrix.architecture }}
     needs: prepare
     strategy:
       fail-fast: false
@@ -399,7 +399,7 @@ jobs:
           retention-days: 1
 
   merge_alpine:
-    name: Merge Alpine Multi-Arch Manifest
+    name: Merge Alpine (base-alpine) Multi-Arch Manifest
     if: | 
       needs.prepare.outputs.alpine_exists != 'true' &&
       inputs.push
@@ -450,7 +450,7 @@ jobs:
           echo "Image: \`${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
 
   build-python:                                    # nevezd el, ahogy szeretnéd
-    name: Build python ${{ matrix.platform }} 
+    name: Build python (base-python) ${{ matrix.platform }} 
     needs: [prepare, merge_alpine]
     if: |
       always() &&
@@ -555,7 +555,7 @@ jobs:
           echo "version       = ${{ needs.prepare.outputs.basever }}"
 
   merge-python:                 
-    name: Merge-python manifests
+    name: Merge-python (base-python) manifests
     needs: [prepare, build-python]
     if: |
       always() &&
@@ -622,7 +622,7 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           date >> $GITHUB_STEP_SUMMARY
 
-  build-added:                                    # HABASE-home-assistant base image for core
+  build-base-added:                                    # HABASE-home-assistant base image for core
     name: Build docker-HA-CORE-BASE ${{ matrix.platform }} 
     needs: [prepare, merge-python]
     if: |
@@ -739,13 +739,13 @@ jobs:
           echo "docker version= ${{ needs.prepare.outputs.dockerver }}"
           echo "base version  = ${{ needs.prepare.outputs.basever }}"
 
-  merge-added:                 
-    name: Merge-docker manifests
-    needs: [prepare, build-added]
+  merge-base-added:                 
+    name: Merge-docker (base-added) manifests
+    needs: [prepare, build-base-added]
     if: |
       always() &&
       needs.prepare.result == 'success' &&
-      needs.build-added.result == 'success' &&
+      needs.build-base-added.result == 'success' &&
       inputs.push
     runs-on: ubuntu-latest
     
@@ -927,12 +927,12 @@ jobs:
           echo "base version  = ${{ needs.prepare.outputs.basever }}"
 
   merge-wheeler:                 
-    name: Merge-python manifests
-    needs: [prepare, build-added]
+    name: Merge-wheeler manifests
+    needs: [prepare, build-wheeler]
     if: |
       always() &&
       needs.prepare.result == 'success' &&
-      needs.build-added.result == 'success' &&
+      needs.build-wheeler.result == 'success' &&
       inputs.push
     runs-on: ubuntu-latest
     
