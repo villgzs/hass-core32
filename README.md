@@ -8,6 +8,8 @@ Latest official image can be found here:
 
 [https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest](https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest)
 
+### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
+
 # THIS IS NOT OFFICIAL RELEASE !
 
 ---
@@ -27,8 +29,6 @@ USE AT YOUR OWN RISK.
 ![Docker Image Version](https://img.shields.io/github/v/release/home-assistant/core?label=Home%20Assistant%20Core&color=blue)
 ![Architecture](https://img.shields.io/badge/Architecture-ARMv7-orange)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/builder_new.yml?label=Build)
-
-### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
 
 # Home Assistant Core (32-bit ARM Build)
 [*Github repository : hass-core32*](https://github.com/villgzs/hass-core32)
