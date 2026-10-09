@@ -401,9 +401,10 @@ jobs:
     needs: [prepare, build-armv7]
     if: |
       always() &&
-      needs.prepare.result == 'success' &&
+      inputs.push_to_docker &&
+      ( needs.prepare.result == 'success' &&
       needs.build-armv7.result == 'success' ||
-      ( inputs.push_to_docker && needs.prepare.outputs.armv7image_ready != 'true' )
+      needs.prepare.outputs.armv7image_ready )
     runs-on: ubuntu-latest
     permissions:
       contents: read
