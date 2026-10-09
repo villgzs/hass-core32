@@ -1,4 +1,4 @@
-```
+e```
 cat > /config/check_ha_packages.py << 'EOF'
 #!/usr/bin/env python3
 """
@@ -89,12 +89,14 @@ def get_module_version(module) -> Optional[str]:
 
 
 def check_package(pkg_name: str, pkg_version: str) -> None:
+
+    print(f"{pkg_name:40}", end="")  
     import_name = guess_import_name(pkg_name)
 
     try:
         mod = importlib.import_module(import_name)
     except Exception as e:
-        print(f"{pkg_name:40}  pip={pkg_version:12}  IMPORT FAIL: {type(e).__name__}: {e}")
+        print(f"pip={pkg_version:12}  IMPORT FAIL: {type(e).__name__}: {e}")
         return
 
     mod_version = get_module_version(mod)
