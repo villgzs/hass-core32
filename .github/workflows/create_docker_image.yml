@@ -220,7 +220,7 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.ha-ba-lat.outputs.basever }}"-"${{ steps.ha-do-lat.outputs.dockerver }}"
+          VERSION="${{ steps.ha-ba-lat.outputs.basever }}-${{ steps.ha-do-lat.outputs.dockerver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.HABASE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
@@ -260,7 +260,7 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.ha-ba-lat.outputs.basever }}"-${{ steps.ha-we-lat.outputs.wheelsver }}"
+          VERSION="${{ steps.ha-ba-lat.outputs.basever }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.WHEELS_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
