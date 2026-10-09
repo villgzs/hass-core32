@@ -1,4 +1,4 @@
-e```
+```
 cat > /config/check_ha_packages.py << 'EOF'
 #!/usr/bin/env python3
 """
