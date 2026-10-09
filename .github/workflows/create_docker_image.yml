@@ -899,6 +899,8 @@ jobs:
             BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
             EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
             PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+            CPYTHON_ABI=cp314
+            BUILD_ARCH=armv7            
 
       - name: Export digest
         if: inputs.push
