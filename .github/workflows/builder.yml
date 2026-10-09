@@ -21,6 +21,11 @@ on:
         type: boolean
         required: false
         default: false
+      push_to_docker:
+        description: "Push to dockerhub"
+        type: boolean
+        required: false
+        default: false
   # schedule:
   #  - cron: "0 4 * * *"
   # push:
@@ -397,7 +402,8 @@ jobs:
     if: |
       always() &&
       needs.prepare.result == 'success' &&
-      needs.build-armv7.result == 'success'
+      needs.build-armv7.result == 'success' ||
+      ( inputs.push_to_docker && needs.prepare.outputs.armv7image_ready != 'true' )
     runs-on: ubuntu-latest
     permissions:
       contents: read
