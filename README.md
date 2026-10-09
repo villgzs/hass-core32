@@ -31,6 +31,7 @@ USE AT YOUR OWN RISK.
 ### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
 
 # Home Assistant Core (32-bit ARM Build)
+[*Github repository : hass-core32*](https://github.com/villgzs/hass-core32)
 
 A custom Docker build of **Home Assistant Core** optimized exclusively for **32-bit ARM (armv7)** architecture. It is designed for older Raspberry Pi models, **Orange Pi Zero** and similar single-board computers, as well as Android phones running in a **Termux + udocker** environment. This repository automatically fetches the latest stable Home Assistant Core source, replaces the standard container configuration, and builds a container image.
 
@@ -51,7 +52,6 @@ A custom Docker build of **Home Assistant Core** optimized exclusively for **32-
 The resulting images are published to the GitHub Container Registry (GHCR):
 
 ```bash
-ghcr.io/villgzs/hass-core32:latest
 ghcr.io/villgzs/hass-core32:<version>
 ```
 
@@ -69,6 +69,6 @@ docker run -d \
   -v /___PATH_TO_YOUR_CONFIG___:/config \
   -v /etc/localtime:/etc/localtime:ro \
   -v /run/dbus:/run/dbus:ro \
-  ghcr.io/villgzs/hass-core32:latest
+  ghcr.io/villgzs/hass-core32:<version>
 ```
 
