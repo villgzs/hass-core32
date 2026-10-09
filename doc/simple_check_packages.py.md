@@ -102,7 +102,7 @@ def check_package(pkg_name: str, pkg_version: str) -> None:
     mod_version = get_module_version(mod)
 
     if mod_version is None:
-        print(f"{pkg_name:40}  pip={pkg_version:12}  import={import_name:25}  (nincs __version__)")
+        print(f"pip={pkg_version:12}  import={import_name:25}  (nincs __version__)")
     else:
         match = "OK" if mod_version == pkg_version else "DIFF"
         print(
