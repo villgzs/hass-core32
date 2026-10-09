@@ -106,7 +106,7 @@ def check_package(pkg_name: str, pkg_version: str) -> None:
     else:
         match = "OK" if mod_version == pkg_version else "DIFF"
         print(
-            f"{pkg_name:40}  pip={pkg_version:12}  "
+            f"pip={pkg_version:12}  "
             f"import={import_name:25}  mod={mod_version:12}  [{match}]"
         )
 
