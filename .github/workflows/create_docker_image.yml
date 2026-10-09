@@ -625,7 +625,8 @@ jobs:
           echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
           echo "python_exists = ${{ needs.prepare.outputs.python_exists }}"
           echo "merge_python  = ${{ needs.merge-python.result }}"
-          echo "version       = ${{ needs.prepare.outputs.dockerver }}"
+          echo "docker version= ${{ needs.prepare.outputs.dockerver }}"
+          echo "base version  = ${{ needs.prepare.outputs.basever }}"
 
   merge-added:                 
     name: Merge-python manifests
@@ -673,9 +674,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}
           tags: |            
             type=sha,prefix=sha-
-            type=raw,value=${{needs.prepare.outputs.dockerver}}
-            type=raw,value=${{needs.prepare.outputs.docker_tags}}
-
+            type=raw,value=${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.dockerver}}
+    
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
@@ -688,6 +688,8 @@ jobs:
           echo "### Docker Image built successfully :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
