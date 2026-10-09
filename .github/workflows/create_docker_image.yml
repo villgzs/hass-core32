@@ -380,7 +380,7 @@ jobs:
           build-args: |
             BASE_ALPINE_VERSION=${{ needs.prepare.outputs.basever }}
             TEST_BUILD=${{ inputs.test_build }}
-            EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+            EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
             
       - name: Export digest
         if: inputs.push
@@ -712,8 +712,8 @@ jobs:
             BASE_IMAGE=ghcr.io/${{env.PYTHON_IMAGE_NAME}}
             BASE_VERSION=${{needs.prepare.outputs.basever}}
             BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
-            EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
-            PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+            EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
+            PIP_EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
 
       - name: Export digest
         if: inputs.push
@@ -897,8 +897,8 @@ jobs:
             BASE_IMAGE=ghcr.io/${{env.PYTHON_IMAGE_NAME}}
             BASE_VERSION=${{needs.prepare.outputs.basever}}
             BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
-            EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
-            PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+            EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
+            PIP_EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
             CPYTHON_ABI=cp314
             BUILD_ARCH=armv7            
 
