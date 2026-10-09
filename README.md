@@ -28,7 +28,7 @@ USE AT YOUR OWN RISK.
 
 ![Docker Image Version](https://img.shields.io/github/v/release/home-assistant/core?label=Home%20Assistant%20Core&color=blue)
 ![Architecture](https://img.shields.io/badge/Architecture-ARMv7-orange)
-![Build Status](https://img.shields.io/github/actions/workflow/status/villgzs/hass-core32/builder_new.yml?label=Build)
+[![Build CORE-32-bit Home Assistant](https://github.com/villgzs/hass-core32/actions/workflows/builder.yml/badge.svg)](https://github.com/villgzs/hass-core32/actions/workflows/builder.yml)
 
 # Home Assistant Core (32-bit ARM Build)
 [*Github repository : hass-core32*](https://github.com/villgzs/hass-core32)
