@@ -22,6 +22,10 @@ on:
         description: "Home Assistant Docker verzió (üres = legfrissebb stable)"
         required: false
         default: ""
+      required_wheels_version:
+        description: "Home Assistant Wheels verzió (üres = legfrissebb stable)"
+        required: false
+        default: ""
       patch_files:
         description: "Dockerfile foltozás:"
         required: false
@@ -59,6 +63,7 @@ jobs:
     outputs:
       basever: ${{ steps.ha-ba-lat.outputs.basever }}
       dockerver: ${{ steps.ha-do-lat.outputs.dockerver }}
+      wheelsver: ${{ steps.ha-we-lat.outputs.wheelsver }}
       base_tags: ${{steps.ha-ba-lat.outputs.base_tags}}
       docker_tags: ${{steps.ha-do-lat.outputs.docker_tags}}
       alpine_exists: ${{steps.check-alpine.outputs.alpine_exists}}
@@ -107,6 +112,26 @@ jobs:
           
           echo "dockerver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+
+      - name: Get latest stable wheels version
+        id: ha-we-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.required_wheels_version }}" ]; then
+            VERSION="${{ inputs.required_wheels_version }}"
+            DOCKERTAGS="arm32"
+          else
+            VERSION=$(gh api repos/${{env.HA_WHEELS_REPO}}/releases/latest --jq '.tag_name')
+            DOCKERTAGS="latest"
+          fi
+          
+          echo "Home Assistant version: ${VERSION}"
+          echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
+          echo "wheels_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+          
+          echo "wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "wheels_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
 
       - name: Check if alpine multi manifest image already exists on GHCR
         id: check-alpine
@@ -516,7 +541,7 @@ jobs:
           date >> $GITHUB_STEP_SUMMARY
 
   build-added:                                    # HABASE-home-assistant base image for core
-    name: Build python ${{ matrix.platform }} 
+    name: Build docker-HA-CORE-BASE ${{ matrix.platform }} 
     needs: [prepare, merge-python]
     if: |
       always() &&
@@ -633,7 +658,7 @@ jobs:
           echo "base version  = ${{ needs.prepare.outputs.basever }}"
 
   merge-added:                 
-    name: Merge-python manifests
+    name: Merge-docker manifests
     needs: [prepare, build-added]
     if: |
       always() &&
@@ -692,6 +717,191 @@ jobs:
           echo "### Docker Image built successfully :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          date >> $GITHUB_STEP_SUMMARY          
+
+  build-wheeler:                                    # HABASE-home-assistant base image for core
+    name: Build wheeler-FOR BUILD WHEELS-${{ matrix.platform }} 
+    needs: [prepare, merge-python]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (
+        needs.prepare.outputs.python_exists == 'true' ||
+        needs.merge-python.result == 'success'
+      )
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/arm/v7
+          # - linux/arm/v6
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Prepare platform string
+        id: preplat
+        run: |
+          # A / jeleket kicseréljük - karakterre a tag-ekhez (pl. linux-arm-v7)
+          PLATFORM_TAG=$(echo "${{ matrix.platform }}" | tr '/' '-')
+          echo "platform_tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.THIS_REPO}}
+          path: ${{env.THIS_REPO_PATH}}
+
+      - name: Checkout official Home Assistant Wheels repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.HA_WHEELS_REPO}}
+          ref: ${{ needs.prepare.outputs.wheelsver }}
+          path: ${{env.HA_WHEELS_REPO_PATH}}
+
+      - name: Patch application - for wheels Dockerfile
+        if: inputs.patch_files
+        working-directory: ${{ env.HA_WHEELS_REPO_PATH }}
+        run: |
+          echo "Patch Wheels Dockerfile"
+          patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_wheels_${{needs.prepare.outputs.wheelsver}}.patch   
+          echo "---------"
+          cat Dockerfile
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.HA_WHEELS_REPO_PATH }}/${{ env.WHEELS_FILE_PATH }}
+          file: ${{ env.HA_WHEELS_REPO_PATH }}/${{ env.WHEELS_FILE_PATH }}/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          provenance: false
+          sbom: false
+          build-args: |
+            BASE_IMAGE=ghcr.io/${{env.PYTHON_IMAGE_NAME}}
+            BASE_VERSION=${{needs.prepare.outputs.basever}}
+            BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
+            EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+            PIP_EXTRA_INDEX_URL="https://villgzs.github.io/musllinux-index/"
+
+      - name: Export digest
+        if: inputs.push
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: inputs.push
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-added-${{ steps.preplat.outputs.platform_tag }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+          
+      - name: Debug info
+        run: |
+          echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
+          echo "python_exists = ${{ needs.prepare.outputs.python_exists }}"
+          echo "merge_python  = ${{ needs.merge-python.result }}"
+          echo "wheels version= ${{ needs.prepare.outputs.wheelsver }}"
+          echo "base version  = ${{ needs.prepare.outputs.basever }}"
+
+  merge-wheeler:                 
+    name: Merge-python manifests
+    needs: [prepare, build-added]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.build-added.result == 'success' &&
+      inputs.push
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Debug info
+        run: |
+          echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
+          echo "python_exists = ${{ needs.prepare.outputs.python_exists }}"
+          echo "version       = ${{ needs.prepare.outputs.wheelsver }}"
+          
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-added-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}
+          tags: |            
+            type=sha,prefix=sha-
+            type=raw,value=${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.wheelsver}}
+    
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}@sha256:%s ' *)
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{needs.prepare.outputs.wheelsver}}
+
+      - name: Image summary
+        run: |
+          echo "### Wheels Image built successfully :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
