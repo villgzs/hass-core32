@@ -38,13 +38,17 @@ env:
   ALPINE_IMAGE_NAME: ${{ github.repository }}-basealpine
   PYTHON_IMAGE_NAME: ${{ github.repository }}-basepython
   HABASE_IMAGE_NAME: ${{ github.repository }}-baseadded
+  WHEELS_IMAGE_NAME: ${{ github.repository }}-wheeler
   HA_ALPINE_REPO: home-assistant/docker-base
   HA_ALPINE_REPO_PATH: ha-base-repo
   HA_DOCKER_REPO: home-assistant/docker
   HA_DOCKER_REPO_PATH: ha-docker-repo
+  HA_WHEELS_REPO: home-assistant/wheels
+  HA_WHEELS_REPO_PATH: ha-wheels-repo
   ALPINE_FILE_PATH: alpine
   PYTHON_FILE_PATH: python/3.14
   HABASE_FILE_PATH: 
+  WHEELS_FILE_PATH:
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32-repo
 
