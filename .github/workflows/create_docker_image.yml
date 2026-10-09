@@ -220,7 +220,7 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.ha-do-lat.outputs.dockerver }}"
+          VERSION="${{ steps.ha-ba-lat.outputs.basever }}"-"${{ steps.ha-do-lat.outputs.dockerver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.HABASE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
@@ -260,7 +260,7 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.ha-we-lat.outputs.wheelsver }}"
+          VERSION="${{ steps.ha-ba-lat.outputs.basever }}"-${{ steps.ha-we-lat.outputs.wheelsver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.WHEELS_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
@@ -792,7 +792,8 @@ jobs:
         run: |
           docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}@sha256:%s ' *)
-          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{needs.prepare.outputs.dockerver}}
+            
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.dockerver}}
 
       - name: Image summary
         run: |
@@ -979,7 +980,7 @@ jobs:
           docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}@sha256:%s ' *)
             
-          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}:${{needs.prepare.outputs.wheelsver}}
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }}:${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.wheelsver}}
 
       - name: Image summary
         run: |
