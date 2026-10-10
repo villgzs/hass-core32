@@ -38,7 +38,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   EXTRA_TAGS: "arm32;latest"
   BASE_IMAGE: "ghcr.io/villgzs/hass-core32-baseadded"
-  BASE_IMAGE_TAG: "2026.07.0"
+  BASE_IMAGE_TAG: "2026.10.0-2026.10.0"
   # Dockerfile: relative to the repository root (/)
   DOCKERFILE: Dockerfiles/Dockerfile_reds_2026.9.4 
   HA_CORE_REPO: homeassistant/core
