@@ -216,10 +216,12 @@ jobs:
         working-directory: ${{ env.THIS_REPO_PATH }}
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
-          GUIDANCE_FILE="guidance/core_versions"
+          GUIDANCE_FILE="guidance/core-versions"
       
           echo "Looking for version: $VERSION"
           echo "In file: $GUIDANCE_FILE"
+          pwd
+          ls -las
       
           if [ ! -f "$GUIDANCE_FILE" ]; then
             echo "::error::Guidance file not found: $GUIDANCE_FILE"
