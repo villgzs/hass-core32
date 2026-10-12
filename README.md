@@ -73,7 +73,7 @@ docker run -d \
   ghcr.io/villgzs/hass-core32:<version>
 ```
 
-## Additional options / availability for armv7 core image
+## 💡 Additional options / availability for armv7 core image
 
 - [Github - Andrew Youll and Andrew Youll](https://github.com/adyoull/HA-ARMv7)
 - [Github - Petr Gregor](https://github.com/Gregy/homeassistant-armv7) and [Dockerhub](https://hub.docker.com/r/gregy/homeassistant-armv7)
