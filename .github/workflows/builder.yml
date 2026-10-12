@@ -32,8 +32,7 @@ on:
   #   branches:
   #     - main
 
-permissions:
-  contents: write
+
       
 env:
   
@@ -165,7 +164,7 @@ jobs:
     if: needs.prepare.outputs.armv7image_ready != 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
       actions: read
     steps:
