@@ -160,8 +160,7 @@ jobs:
 
   build-armv7:
     name: Build arm/v7
-    needs: prepare
-    if: needs.prepare.outputs.armv7image_ready != 'true'
+    needs: prepare    
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -370,6 +369,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push arm/v7
+        if: needs.prepare.outputs.armv7image_ready != 'true'
         uses: docker/build-push-action@v6
         with:
           context: ha-core
