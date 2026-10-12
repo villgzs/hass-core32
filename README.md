@@ -9,7 +9,7 @@ Latest official image can be found here:
 [https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest](https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest)
 
 ### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
-### [Home-assistant/docker - actions for releases](https://github.com/home-assistant/docker/actions?query=event%3Arelease)
+[Home-assistant/docker - actions for releases](https://github.com/home-assistant/docker/actions?query=event%3Arelease)
 
 # THIS IS NOT OFFICIAL RELEASE !
 
