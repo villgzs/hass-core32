@@ -31,6 +31,9 @@ on:
   # push:
   #   branches:
   #     - main
+
+permissions:
+  contents: write
       
 env:
   
@@ -170,6 +173,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ${{env.THIS_REPO_PATH}}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # vagy Personal Access Token, ha a GITHUB_TOKEN nem elég
 
       - name: Checkout official Home Assistant core
         uses: actions/checkout@v4
@@ -185,11 +190,61 @@ jobs:
           ls -las ./
           echo "----"
           ls -las ../
+
           echo "=== Patching Dockerfile ==="
-          patch Dockerfile < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_${{needs.prepare.outputs.version}}.patch
+          PATCH_FILE="../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_${{ needs.prepare.outputs.version }}.patch"
+          
+          if [ -f "$PATCH_FILE" ]; then
+            echo "Patch file found: $PATCH_FILE"
+            patch Dockerfile < "$PATCH_FILE"
+          else
+            echo "No version-specific patch found for ${{ needs.prepare.outputs.version }}, trying general..."
+            PATCH_FILE="../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_general.patch"
+          
+            if [ -f "$PATCH_FILE" ]; then
+              echo "General patch file found: $PATCH_FILE"
+              patch Dockerfile < "$PATCH_FILE"
+            else
+              echo "No patch file found at all (neither version-specific nor general). Stopping."
+              exit 1
+            fi
+          fi
 
           echo "=== A használt Dockerfile ==="
           cat Dockerfile || true
+
+      - name: Check version in core_versions guidance
+        id: guidedversion
+        working-directory: ${{ env.THIS_REPO_PATH }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          GUIDANCE_FILE="guidance/core_versions"
+      
+          echo "Looking for version: $VERSION"
+          echo "In file: $GUIDANCE_FILE"
+      
+          if [ ! -f "$GUIDANCE_FILE" ]; then
+            echo "::error::Guidance file not found: $GUIDANCE_FILE"
+            exit 1
+          fi
+      
+          MATCHING_LINE=$(grep "^${VERSION}" "$GUIDANCE_FILE" || true)
+      
+          if [ -z "$MATCHING_LINE" ]; then
+            echo "::error::Version ${VERSION} not found in $GUIDANCE_FILE"
+            echo "Available versions:"
+            cat "$GUIDANCE_FILE"
+            exit 1
+          fi
+      
+          # A VERSION után következő szöveg, whitespace nélkül
+          EXTRA_TEXT=$(echo "$MATCHING_LINE" | sed -E "s/^${VERSION}[[:space:]]*//" | xargs)
+      
+          echo "Found matching line: $MATCHING_LINE"
+          echo "Text after version:"
+          echo "$EXTRA_TEXT"
+
+          echo "tag=$EXTRA_TEXT" >> $GITHUB_OUTPUT
       
       - name: Download translations artifact
         id: transl
@@ -200,6 +255,59 @@ jobs:
           repository: home-assistant/core
           run-id: ${{ needs.prepare.outputs.run_id }}
           path: ha-core
+
+      - name: Save translations package into this repository
+        working-directory: ${{ env.THIS_REPO_PATH }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          
+          # A letöltött csomagolt fájl
+          SOURCE_FILE="../ha-core/translations.tar.gz"
+          
+          # Cél a saját repo translations mappájában
+          TARGET_DIR="translations"
+          TARGET_FILE="${TARGET_DIR}/translations_${VERSION}.tar.gz"
+      
+          echo "Saving translations package for version: $VERSION"
+      
+          if [ ! -f "$SOURCE_FILE" ]; then
+            echo "::error::Downloaded package not found: $SOURCE_FILE"
+            ls -la ../ha-core/
+            exit 1
+          fi
+      
+          mkdir -p "$TARGET_DIR"
+          cp "$SOURCE_FILE" "$TARGET_FILE"
+      
+          echo "Saved as: $TARGET_FILE"
+          ls -lh "$TARGET_FILE"
+
+      - name: Commit and push new translations file
+        working-directory: ${{ env.THIS_REPO_PATH }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          TARGET_FILE="translations/translations_${VERSION}.tar.gz"
+      
+          echo "Checking for new translations file: $TARGET_FILE"
+      
+          if [ ! -f "$TARGET_FILE" ]; then
+            echo "::error::New translations file not found: $TARGET_FILE"
+            exit 1
+          fi
+      
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      
+          # Csak a friss fájlt adjuk hozzá (a régieket nem)
+          git add "$TARGET_FILE"
+      
+          if git diff --staged --quiet; then
+            echo "No changes to commit (file already exists and is identical)."
+          else
+            git commit -m "Add translations for ${VERSION}"
+            git push
+            echo "Successfully pushed $TARGET_FILE"
+          fi
 
       - name: Extract
         working-directory: ha-core
@@ -227,18 +335,6 @@ jobs:
           ls -la homeassistant/components/onboarding/translations/ || echo "FIGYELEM: nincs translations mappa"
           head -30 homeassistant/components/onboarding/translations/en.json || true
           
-      - name: Replace Dockerfile with your 32-bit version
-        if: failure()
-        run: |
-          echo "=== Dockerfile másolása ==="
-          cp THIS_REPO_PATH/${{env.DOCKERFILE}} ha-core/Dockerfile
-          echo "Sikeresen másolva: THIS_REPO_PATH/${{env.DOCKERFILE}} → ha-core/Dockerfile"
-          echo ""
-          echo "=== A használt Dockerfile eleje ==="
-          head -n 15 ha-core/Dockerfile
-
-
-
       - name: Replace av==17.0.1 to av==17.1.0
         if: ${{ inputs.av_replace }}
         run: |
@@ -284,7 +380,8 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
           provenance: false
           build-args: |
-            BUILD_FROM=${{env.BASE_IMAGE}}:${{env.BASE_IMAGE_TAG}}
+            # BUILD_FROM=${{env.BASE_IMAGE}}:${{env.BASE_IMAGE_TAG}}
+            BUILD_FROM=${{env.BASE_IMAGE}}:${{steps.guidedversion.outputs.tag}}
 
   build-armv6:
     name: Build arm/v6
