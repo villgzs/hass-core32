@@ -172,7 +172,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ${{env.THIS_REPO_PATH}}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TRANSLATION_UPLOAD }}
           # vagy Personal Access Token, ha a GITHUB_TOKEN nem elég
 
       - name: Checkout official Home Assistant core
