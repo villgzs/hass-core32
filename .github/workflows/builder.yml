@@ -11,11 +11,6 @@ on:
         description: "Home Assistant Core verzió ( üresen = legfrissebb stable)"
         required: false
         default: ""
-      av_replace:
-        description: "av==17.0 -> av 17.1"
-        type: boolean
-        required: false
-        default: false
       build_armv6:
         description: "Építsünk armv6-ot"
         type: boolean
@@ -31,9 +26,7 @@ on:
   # push:
   #   branches:
   #     - main
-
-
-      
+  
 env:
   
   REGISTRY: ghcr.io
@@ -315,47 +308,6 @@ jobs:
           tar xvf translations.tar.gz
           echo "translations extracted"
           # ls -la homeassistant/components/*/translations/ 
-
-      - name: Generate English translations from strings.json
-        working-directory: ha-core
-        if: failure()
-        run: |
-          # Python 3 szintaxis javítás
-          sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' \
-            script/translations/__main__.py
-
-          # sed -i 's/except KeyboardInterrupt, EOFError:/except (KeyboardInterrupt, EOFError):/' script/translations/__main__.py
-
-          # A script függőségei
-          pip install --quiet orjson awesomeversion
-
-          python3 -m script.translations develop --all
-
-          echo "=== Ellenőrzés ==="
-          ls -la homeassistant/components/onboarding/translations/ || echo "FIGYELEM: nincs translations mappa"
-          head -30 homeassistant/components/onboarding/translations/en.json || true
-          
-      - name: Replace av==17.0.1 to av==17.1.0
-        if: ${{ inputs.av_replace }}
-        run: |
-          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/requirements_all.txt
-          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/package_constraints.txt
-          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/stream/manifest.json
-          sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/homeassistant/components/generic/manifest.json
-          # sed -i 's/av==17\.0\.1/av==17\.1\.0/g' ha-core/
-          cat ha-core/requirements_all.txt | grep 'av==' || true
-
-      - name: Pin Cython version in pyproject.toml
-        run: |
-          # Biztonságos csere: a meglévő setuptools sor mellé beszúrja a cython korlátozást
-          sed -i 's/requires = \["setuptools==78.1.1"\]/requires = ["setuptools==78.1.1", "cython<3.2.9"]/' ha-core/pyproject.toml
-
-          # Ellenőrzés (opcionális, de ajánlott)
-          echo "=== Módosított [build-system] rész ==="
-          sed -n '/\[build-system\]/,/^\[/p' ha-core/pyproject.toml | head -20
-
-          echo "ls -las ha-core/rootfs/init"
-          ls -las ha-core/rootfs/init
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
