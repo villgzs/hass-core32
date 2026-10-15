@@ -438,6 +438,7 @@ jobs:
           echo ""
   
           docker buildx imagetools create \
+            --prefer-index=false \
             --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }} \
             $IMAGES
     
