@@ -487,10 +487,14 @@ jobs:
 
           # Egy az egyben átmásolja az armv7 image-t (nincs multi-arch)
           docker buildx imagetools create \
+            --prefer-index=false \
             --tag "${DST}:${VERSION}" \
             --tag "${DST}:armv7-${VERSION}" \
             --tag "${DST}:latest" \
             "$SRC"
+
+          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${VERSION}"
+          docker buildx imagetools inspect "${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7:${VERSION}"
 
           echo ""
           echo "Kész:"
