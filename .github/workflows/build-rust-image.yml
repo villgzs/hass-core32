@@ -1,4 +1,4 @@
-name: Build and Push Rust Docker Image (arm/v7)
+name: Build Rust 1.99.1 Docker Image (arm/v7)
 
 on:
   workflow_dispatch: # Kézi indítási lehetőség az Actions fülön
