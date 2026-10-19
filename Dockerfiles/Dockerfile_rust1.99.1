@@ -21,56 +21,43 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     PATH=/usr/local/cargo/bin:$PATH \
     RUST_VERSION=1.99.1
 
-# Architektúra detektálása
-ARG TARGETARCH
-ARG TARGETVARIANT
-
 RUN set -eux; \
     arch="$(apk --print-arch)"; \
     echo "Detected arch: $arch"; \
     \
     if [ "$arch" = "x86_64" ] || [ "$arch" = "aarch64" ]; then \
-        # --- amd64 / arm64: rustup ---
         echo "Using rustup for $arch"; \
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             sh -s -- -y --default-toolchain ${RUST_VERSION} --profile minimal; \
         rustup component add rustfmt clippy; \
     elif [ "$arch" = "armv7" ]; then \
-        # --- armv7: forrásból fordítás (NAGYON lassú!) ---
         echo "Building Rust ${RUST_VERSION} from source for armv7..."; \
-        \
-        # Bootstrap: rendszer rust (1.96)
         apk add --no-cache rust cargo; \
-        \
-        # Forrás letöltése
         cd /tmp; \
         curl -LO "https://static.rust-lang.org/dist/rustc-${RUST_VERSION}-src.tar.gz"; \
         tar xf "rustc-${RUST_VERSION}-src.tar.gz"; \
         cd "rustc-${RUST_VERSION}-src"; \
         \
-        # Minimális config (kevesebb memória, kevesebb tool)
-        cat > config.toml << EOF
-[build]
-docs = false
-compiler-docs = false
-extended = true
-tools = ["cargo"]
-jobs = 1
-rustc = "/usr/bin/rustc"
-cargo = "/usr/bin/cargo"
-
-[rust]
-codegen-units = 1
-lto = "off"
-debug = false
-debuginfo-level = 0
-EOF
+        # config.toml létrehozása (heredoc helyett echo-kkal)
+        printf '%s\n' \
+            '[build]' \
+            'docs = false' \
+            'compiler-docs = false' \
+            'extended = true' \
+            'tools = ["cargo"]' \
+            'jobs = 1' \
+            'rustc = "/usr/bin/rustc"' \
+            'cargo = "/usr/bin/cargo"' \
+            '' \
+            '[rust]' \
+            'codegen-units = 1' \
+            'lto = "off"' \
+            'debug = false' \
+            'debuginfo-level = 0' \
+            > config.toml; \
         \
-        # Fordítás (ez órákig tarthat!)
         ./x.py build --stage 2; \
         ./x.py install; \
-        \
-        # Takarítás
         cd /; \
         rm -rf /tmp/rustc-*; \
         apk del rust cargo; \
@@ -79,9 +66,7 @@ EOF
         exit 1; \
     fi; \
     \
-    # Ellenőrzés
     rustc --version; \
     cargo --version
 
-# Maturin (opcionális)
 RUN pip install --no-cache-dir maturin
