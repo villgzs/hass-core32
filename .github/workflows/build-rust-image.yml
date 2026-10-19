@@ -29,8 +29,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Image neve kisbetűssé alakítása
+        id: prep
         run: |
-          echo "IMAGE_REPOSITORY=ghcr.io/${{ github.repository_owner }}/rust1.99" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
+          REPO_LOWER=$(echo "ghcr.io/${{ github.repository_owner }}/rust1.99" | tr '[:upper:]' '[:lower:]')
+          echo "image_repo=${REPO_LOWER}" >> $GITHUB_OUTPUT
 
       - name: Build és Push (linux/arm/v7)
         uses: docker/build-push-action@v6
@@ -40,5 +42,5 @@ jobs:
           platforms: linux/arm/v7
           push: true
           tags: |
-            ${{ env.IMAGE_REPOSITORY }}:latest
-            ${{ env.IMAGE_REPOSITORY }}:1.99.1
+            ${{ steps.prep.outputs.image_repo }}:latest
+            ${{ steps.prep.outputs.image_repo }}:1.99.1
