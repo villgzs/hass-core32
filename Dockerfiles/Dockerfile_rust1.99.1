@@ -14,13 +14,13 @@
 
 ARG BASE=ghcr.io/villgzs/hass-core32-basepython:2026.10.0
 
-# Globális környezeti változó a Cargo / x.py logolásának csendesítésére
-ENV CARGO_TERM_QUIET=true
-
 # ============================================================
 # 0. közös alap
 # ============================================================
 FROM ${BASE} AS base
+
+# Globális környezeti változó a Cargo / x.py logolásának csendesítésére
+ENV CARGO_TERM_QUIET=true
 
 RUN apk add --no-cache \
     curl \
