@@ -1,0 +1,81 @@
+# docker buildx build \
+#   --platform linux/arm/v7 \
+#   -t ha-python-rust:1.98 \
+#   -f Dockerfile_rust1.98 \
+#   --build-arg RUST197=ha-python-rust:1.97 \
+#   --load .
+
+ARG BASE=ghcr.io/villgzs/hass-core32-basepython:2026.10.0
+ARG RUST197=ha-python-rust:1.97
+
+# ============================================================
+# 0. közös alap (újra, hogy a build-eszközök meglegyenek)
+# ============================================================
+FROM ${BASE} AS base
+
+ENV CARGO_TERM_QUIET=true
+
+RUN apk add --no-cache \
+    curl \
+    build-base \
+    musl-dev \
+    openssl-dev \
+    linux-headers \
+    pkgconf \
+    cmake \
+    python3 \
+    git \
+    ninja \
+    patch \
+    xz \
+    tar
+
+# ============================================================
+# 2. lépés: 1.97 → 1.98
+# ============================================================
+FROM base AS rust-1.98
+
+# Az előző fázis eredménye
+COPY --from=${RUST197} /opt/rust-1.97 /opt/rust-1.97
+
+WORKDIR /tmp
+RUN set -eux; \
+    curl -LO https://static.rust-lang.org/dist/rustc-1.98.0-src.tar.gz; \
+    tar xf rustc-1.98.0-src.tar.gz; \
+    cd rustc-1.98.0-src; \
+    \
+    printf '%s\n' \
+        '[build]' \
+        'docs = false' \
+        'compiler-docs = false' \
+        'extended = true' \
+        'tools = ["cargo"]' \
+        'jobs = 8' \
+        'rustc = "/opt/rust-1.97/bin/rustc"' \
+        'cargo = "/opt/rust-1.97/bin/cargo"' \
+        '' \
+        '[rust]' \
+        'codegen-units = 1' \
+        'lto = "off"' \
+        'debug = false' \
+        'debuginfo-level = 0' \
+        > config.toml; \
+    \
+    ./x.py build --stage 2; \
+    ./x.py install --prefix=/opt/rust-1.98; \
+    \
+    /opt/rust-1.98/bin/rustc --version; \
+    \
+    cd /; \
+    rm -rf /tmp/rustc-1.98.0-src /tmp/rustc-1.98.0-src.tar.gz
+
+# ============================================================
+# Végső image – csak a 1.98 toolchain
+# ============================================================
+FROM ${BASE}
+
+COPY --from=rust-1.98 /opt/rust-1.98 /opt/rust-1.98
+
+ENV PATH=/opt/rust-1.98/bin:$PATH
+
+RUN rustc --version && cargo --version
