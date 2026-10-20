@@ -53,12 +53,12 @@ RUN printf '%s\n' \
     'compiler-docs = false' \
     'extended = true' \
     'tools = ["cargo"]' \
-    'jobs = 8' \
+    'jobs = 4' \
     'rustc = "/usr/bin/rustc"' \
     'cargo = "/usr/bin/cargo"' \
     '' \
     '[rust]' \
-    'codegen-units = 1' \
+    'codegen-units = 8' \
     'lto = "off"' \
     'debug = false' \
     'debuginfo-level = 0' \
