@@ -1,0 +1,90 @@
+name: Create Rust 1.99.1 Docker Image (arm/v7)
+
+on:
+  workflow_dispatch: # Kézi indítási lehetőség az Actions fülön
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write # Jogosultság a ghcr.io-ra való feltöltéshez
+
+    steps:
+      - name: Repository lekérése
+        uses: actions/checkout@v4
+
+      - name: QEMU beállítása (cross-platform buildhez)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Docker Buildx beállítása
+        uses: docker/setup-buildx-action@v3
+
+      - name: Bejelentkezés a GHCR-re
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image nevek kisbetűssé alakítása
+        id: prep
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner=${OWNER_LOWER}" >> $GITHUB_OUTPUT
+          echo "image_197=ghcr.io/${OWNER_LOWER}/rust1.97" >> $GITHUB_OUTPUT
+          echo "image_198=ghcr.io/${OWNER_LOWER}/rust1.98" >> $GITHUB_OUTPUT
+          echo "image_199=ghcr.io/${OWNER_LOWER}/rust1.99" >> $GITHUB_OUTPUT
+
+      # ============================================================
+      # 1. fázis: Rust 1.97
+      # ============================================================
+      - name: Build & Push – Rust 1.97
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfiles/Dockerfile_rust1.97
+          platforms: linux/arm/v7
+          push: true
+          tags: |
+            ${{ steps.prep.outputs.image_197 }}:armv7
+            ${{ steps.prep.outputs.image_197 }}:ha-python-armv7
+          cache-from: type=gha,scope=rust-1.97
+          cache-to: type=gha,mode=max,scope=rust-1.97
+
+      # ============================================================
+      # 2. fázis: Rust 1.98
+      # ============================================================
+      - name: Build & Push – Rust 1.98
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfiles/Dockerfile_rust1.98
+          platforms: linux/arm/v7
+          push: true
+          build-args: |
+            RUST197=${{ steps.prep.outputs.image_197 }}:armv7
+          tags: |
+            ${{ steps.prep.outputs.image_198 }}:armv7
+            ${{ steps.prep.outputs.image_198 }}:ha-python-armv7
+          cache-from: type=gha,scope=rust-1.98
+          cache-to: type=gha,mode=max,scope=rust-1.98
+
+      # ============================================================
+      # 3. fázis: Rust 1.99.1 (végleges)
+      # ============================================================
+      - name: Build & Push – Rust 1.99.1
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfiles/Dockerfile_rust1.99.1
+          platforms: linux/arm/v7
+          push: true
+          build-args: |
+            RUST198=${{ steps.prep.outputs.image_198 }}:armv7
+          tags: |
+            ${{ steps.prep.outputs.image_199 }}:armv7
+            ${{ steps.prep.outputs.image_199 }}:ha-python-armv7
+          cache-from: type=gha,scope=rust-1.99
+          cache-to: type=gha,mode=max,scope=rust-1.99
