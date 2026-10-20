@@ -7,9 +7,9 @@
 ARG BASE=ghcr.io/villgzs/hass-core32-basepython:2026.10.0
 
 # ============================================================
-# 0. közös alap
+# 0. Build eszközök
 # ============================================================
-FROM ${BASE} AS base
+FROM ${BASE} AS deps
 
 ENV CARGO_TERM_QUIET=true
 
@@ -26,52 +26,68 @@ RUN apk add --no-cache \
     ninja \
     patch \
     xz \
-    tar
+    tar \
+    rust \
+    cargo
 
 # ============================================================
-# 1. lépés: Alpine 1.96 → Rust 1.97
+# 1. Forrás letöltése és kicsomagolása
 # ============================================================
-FROM base AS rust-1.97
-
-RUN apk add --no-cache rust cargo
+FROM deps AS src
 
 WORKDIR /tmp
 RUN set -eux; \
     curl -LO https://static.rust-lang.org/dist/rustc-1.97.0-src.tar.gz; \
     tar xf rustc-1.97.0-src.tar.gz; \
-    cd rustc-1.97.0-src; \
-    \
-    printf '%s\n' \
-        '[build]' \
-        'docs = false' \
-        'compiler-docs = false' \
-        'extended = true' \
-        'tools = ["cargo"]' \
-        'jobs = 8' \
-        'rustc = "/usr/bin/rustc"' \
-        'cargo = "/usr/bin/cargo"' \
-        '' \
-        '[rust]' \
-        'codegen-units = 1' \
-        'lto = "off"' \
-        'debug = false' \
-        'debuginfo-level = 0' \
-        > config.toml; \
-    \
-    ./x.py build --stage 2; \
-    ./x.py install --prefix=/opt/rust-1.97; \
-    \
-    /opt/rust-1.97/bin/rustc --version; \
-    \
-    cd /; \
-    rm -rf /tmp/rustc-1.97.0-src /tmp/rustc-1.97.0-src.tar.gz
+    rm rustc-1.97.0-src.tar.gz
 
 # ============================================================
-# Végső image – csak a 1.97 toolchain
+# 2. config.toml létrehozása
+# ============================================================
+FROM src AS config
+
+WORKDIR /tmp/rustc-1.97.0-src
+RUN printf '%s\n' \
+    '[build]' \
+    'docs = false' \
+    'compiler-docs = false' \
+    'extended = true' \
+    'tools = ["cargo"]' \
+    'jobs = 8' \
+    'rustc = "/usr/bin/rustc"' \
+    'cargo = "/usr/bin/cargo"' \
+    '' \
+    '[rust]' \
+    'codegen-units = 1' \
+    'lto = "off"' \
+    'debug = false' \
+    'debuginfo-level = 0' \
+    > config.toml
+
+# ============================================================
+# 3. Build (leghosszabb lépés)
+# ============================================================
+FROM config AS build
+
+WORKDIR /tmp/rustc-1.97.0-src
+RUN ./x.py build --stage 2
+
+# ============================================================
+# 4. Install
+# ============================================================
+FROM build AS install
+
+WORKDIR /tmp/rustc-1.97.0-src
+RUN ./x.py install --prefix=/opt/rust-1.97 && \
+    /opt/rust-1.97/bin/rustc --version && \
+    /opt/rust-1.97/bin/cargo --version
+
+# ============================================================
+# 5. Végső tiszta image
 # ============================================================
 FROM ${BASE}
 
-COPY --from=rust-1.97 /opt/rust-1.97 /opt/rust-1.97
+COPY --from=install /opt/rust-1.97 /opt/rust-1.97
 
 ENV PATH=/opt/rust-1.97/bin:$PATH
 
