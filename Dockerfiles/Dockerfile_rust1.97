@@ -69,8 +69,20 @@ RUN printf '%s\n' \
 # ============================================================
 FROM config AS build
 
+ENV CARGO_TERM_QUIET=true \
+    CARGO_TERM_PROGRESS_WHEN=never \
+    CARGO_TERM_COLOR=never
+
 WORKDIR /tmp/rustc-1.97.0-src
-RUN ./x.py build --stage 2
+
+RUN set -eux; \
+    ./x.py build --stage 2 2>&1 | tee /tmp/rust-build.log; \
+    # Ha a build elhasalt, dobjuk ki a log végét, hogy látszódjon a hiba
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then \
+        echo "===== BUILD FAILED – last 80 lines ====="; \
+        tail -n 80 /tmp/rust-build.log; \
+        exit 1; \
+    fi
 
 # ============================================================
 # 4. Install
