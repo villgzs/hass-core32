@@ -1,0 +1,84 @@
+# docker buildx build \
+#   --platform linux/arm/v7 \
+#   -t ha-python-rust:1.99.1 \
+#   -f Dockerfile_rust1.99.1 \
+#   --build-arg RUST198=ha-python-rust:1.98 \
+#   --load .
+
+ARG BASE=ghcr.io/villgzs/hass-core32-basepython:2026.10.0
+ARG RUST198=ha-python-rust:1.98
+
+# ============================================================
+# 0. közös alap
+# ============================================================
+FROM ${BASE} AS base
+
+ENV CARGO_TERM_QUIET=true
+
+RUN apk add --no-cache \
+    curl \
+    build-base \
+    musl-dev \
+    openssl-dev \
+    linux-headers \
+    pkgconf \
+    cmake \
+    python3 \
+    git \
+    ninja \
+    patch \
+    xz \
+    tar
+
+# ============================================================
+# 3. lépés: 1.98 → 1.99.1
+# ============================================================
+FROM base AS rust-1.99
+
+COPY --from=${RUST198} /opt/rust-1.98 /opt/rust-1.98
+
+WORKDIR /tmp
+RUN set -eux; \
+    curl -LO https://static.rust-lang.org/dist/rustc-1.99.1-src.tar.gz; \
+    tar xf rustc-1.99.1-src.tar.gz; \
+    cd rustc-1.99.1-src; \
+    \
+    printf '%s\n' \
+        '[build]' \
+        'docs = false' \
+        'compiler-docs = false' \
+        'extended = true' \
+        'tools = ["cargo"]' \
+        'jobs = 8' \
+        'rustc = "/opt/rust-1.98/bin/rustc"' \
+        'cargo = "/opt/rust-1.98/bin/cargo"' \
+        '' \
+        '[rust]' \
+        'codegen-units = 1' \
+        'lto = "off"' \
+        'debug = false' \
+        'debuginfo-level = 0' \
+        > config.toml; \
+    \
+    ./x.py build --stage 2; \
+    ./x.py install --prefix=/usr/local; \
+    \
+    /usr/local/bin/rustc --version; \
+    /usr/local/bin/cargo --version; \
+    \
+    cd /; \
+    rm -rf /tmp/rustc-1.99.1-src /tmp/rustc-1.99.1-src.tar.gz /opt/rust-1.98
+
+# ============================================================
+# Végső image
+# ============================================================
+FROM ${BASE}
+
+COPY --from=rust-1.99 /usr/local /usr/local
+
+ENV PATH=/usr/local/bin:$PATH
+
+RUN rustc --version && cargo --version
+
+# Opcionális
+RUN pip install --no-cache-dir maturin
