@@ -1,0 +1,518 @@
+# builder-dev.yml
+# A builder.yml mintájára készült fejlesztői (dev) ág build workflow.
+# Nem a stable release-ből, hanem a home-assistant/core dev ág utolsó sikeres
+# "Build images" workflow futásából veszi az alap adatokat (fordítások artifact).
+# Az elkészült image a "dev" tag-et kapja, és a ghcr.io-ra megy.
+#
+# Forrás minta: https://github.com/villgzs/hass-core32/blob/main/.github/workflows/builder.yml
+# Hivatalos builder: https://github.com/home-assistant/core/actions/workflows/builder.yml
+
+name: Build (DEV) CORE-32-bit Home Assistant
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_armv6:
+        description: "Építsünk armv6-ot"
+        type: boolean
+        required: false
+        default: false
+      push_to_docker:
+        description: "Push to dockerhub"
+        type: boolean
+        required: false
+        default: false
+  # schedule:
+  #   - cron: "0 5 * * *"   # pl. naponta hajnalban a dev buildhez
+  # push:
+  #   branches:
+  #     - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  EXTRA_TAGS: "dev"
+  BASE_IMAGE: "ghcr.io/villgzs/hass-core32-baseadded"
+  HA_CORE_REPO: home-assistant/core
+  HA_CORE_REPO_PATH: ha-core
+  THIS_REPO: villgzs/hass-core32
+  THIS_REPO_PATH: hass-core32-repo
+
+jobs:
+  prepare:
+    name: Prepare source (dev branch)
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ha.outputs.version }}
+      tags: ${{ steps.ha.outputs.tags }}
+      armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
+      run_id: ${{ steps.findrunid.outputs.run_id }}
+      sha: ${{ steps.ha.outputs.sha }}
+    steps:
+      - name: Get latest successful Build images run from home-assistant/core (dev)
+        id: ha
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A legutóbbi sikeres futás a builder.yml workflow-ból, dev ágon
+          # (scheduled vagy workflow_dispatch, head_branch == "dev")
+          RUN_JSON=$(gh api \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=success&branch=dev&per_page=10" \
+            --jq '.workflow_runs[0]')
+
+          if [ -z "$RUN_JSON" ] || [ "$RUN_JSON" = "null" ]; then
+            echo "::error::Nem találtam sikeres Build images futást a dev ágon"
+            exit 1
+          fi
+
+          RUN_ID=$(echo "$RUN_JSON" | jq -r '.id')
+          HEAD_SHA=$(echo "$RUN_JSON" | jq -r '.head_sha')
+          # A dev buildnél a verzió tipikusan nightly formátumú (pl. 2026.10.0.dev0)
+          # A head_sha rövid formáját és a dátumot használjuk a taghez
+          SHORT_SHA=$(echo "$HEAD_SHA" | cut -c1-7)
+          # Próbáljuk kiolvasni a display_title-ból vagy a head_branch-ből
+          DISPLAY_TITLE=$(echo "$RUN_JSON" | jq -r '.display_title // empty')
+          CREATED_AT=$(echo "$RUN_JSON" | jq -r '.created_at' | cut -dT -f1)
+
+          # Verzió: ha van explicit verzió a futásban, azt használjuk, különben dev-<sha>
+          # A hivatalos builder a version helperrel állítja be (nightly)
+          # Itt a short SHA + dátum ad stabil, egyedi taget
+          VERSION="dev-${CREATED_AT}-${SHORT_SHA}"
+          DOCKERTAGS="${{ env.EXTRA_TAGS }}"
+
+          echo "Found successful run on dev:"
+          echo "  run_id     = $RUN_ID"
+          echo "  head_sha   = $HEAD_SHA"
+          echo "  short_sha  = $SHORT_SHA"
+          echo "  created_at = $CREATED_AT"
+          echo "  title      = $DISPLAY_TITLE"
+          echo "  version    = $VERSION"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
+          echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
+          echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
+
+          echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "SHA: ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "Run ID: ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check if armv7-dev image already exists on GHCR
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ha.outputs.version }}"
+          TAG="armv7-${VERSION}"
+          PACKAGE=${{ env.IMAGE_NAME }}
+          PACKAGE="${PACKAGE#*/}"
+          OWNER="${{ github.repository_owner }}"
+
+          echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 404 ]; then
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
+            echo "armv7image_ready=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
+            [.[] | select(.metadata.container.tags[]? == $tag)] | length
+          ')
+
+          if [ "$EXISTS" -gt 0 ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "armv7image_ready=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik → build szükséges"
+            echo "armv7image_ready=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Confirm run_id for translations artifact
+        id: findrunid
+        run: |
+          RUN_ID="${{ steps.ha.outputs.run_id }}"
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::run_id hiányzik"
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Found run-id: $RUN_ID"
+
+  build-armv7:
+    name: Build arm/v7 (dev)
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      actions: read
+    steps:
+      - name: Checkout this repository (Dockerfile / patches miatt)
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.THIS_REPO_PATH }}
+          token: ${{ secrets.TRANSLATION_UPLOAD }}
+
+      - name: Checkout official Home Assistant core (dev branch, specific SHA)
+        uses: actions/checkout@v4
+        with:
+          repository: home-assistant/core
+          ref: ${{ needs.prepare.outputs.sha }}
+          path: ${{ env.HA_CORE_REPO_PATH }}
+
+      - name: Patch dockerfile
+        working-directory: ${{ env.HA_CORE_REPO_PATH }}
+        run: |
+          pwd
+          ls -las ./
+          echo "----"
+          ls -las ../
+
+          echo "=== Patching Dockerfile ==="
+          # Dev ágnál általában a general patch-et használjuk, mert a verzió változó
+          PATCH_FILE="../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_general.patch"
+
+          if [ -f "$PATCH_FILE" ]; then
+            echo "General patch file found: $PATCH_FILE"
+            patch Dockerfile < "$PATCH_FILE"
+          else
+            # Próbáljuk a legutóbbi stable-szerű patch-et is
+            echo "No general patch found, looking for any Dockerfile_core_*.patch..."
+            LATEST_PATCH=$(ls -1 ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_*.patch 2>/dev/null | sort -V | tail -n1 || true)
+            if [ -n "$LATEST_PATCH" ] && [ -f "$LATEST_PATCH" ]; then
+              echo "Using latest available patch: $LATEST_PATCH"
+              patch Dockerfile < "$LATEST_PATCH"
+            else
+              echo "No patch file found at all. Stopping."
+              exit 1
+            fi
+          fi
+
+          echo "=== A használt Dockerfile ==="
+          cat Dockerfile || true
+
+      - name: Determine base image tag (guidance or fallback)
+        id: guidedversion
+        working-directory: ${{ env.THIS_REPO_PATH }}
+        run: |
+          VERSION="DEV"
+          GUIDANCE_FILE="guidance/core-versions"
+      
+          echo "Looking for version: $VERSION"
+          echo "In file: $GUIDANCE_FILE"
+          pwd
+          ls -las
+      
+          if [ ! -f "$GUIDANCE_FILE" ]; then
+            echo "::error::Guidance file not found: $GUIDANCE_FILE"
+            exit 1
+          fi
+      
+          MATCHING_LINE=$(grep "^${VERSION}" "$GUIDANCE_FILE" || true)
+      
+          if [ -z "$MATCHING_LINE" ]; then
+            echo "::error::Version ${VERSION} not found in $GUIDANCE_FILE"
+            echo "Available versions:"
+            cat "$GUIDANCE_FILE"
+            exit 1
+          fi
+      
+          # A VERSION után következő szöveg, whitespace nélkül
+          EXTRA_TEXT=$(echo "$MATCHING_LINE" | sed -E "s/^${VERSION}[[:space:]]*//" | xargs)
+      
+          echo "Found matching line: $MATCHING_LINE"
+          echo "Text after version:"
+          echo "$EXTRA_TEXT"
+
+          echo "tag=$EXTRA_TEXT" >> $GITHUB_OUTPUT
+
+      - name: Download translations artifact from official Build images (dev)
+        id: transl
+        uses: actions/download-artifact@v4
+        with:
+          name: translations
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: home-assistant/core
+          run-id: ${{ needs.prepare.outputs.run_id }}
+          path: ha-core
+
+      - name: Save translations package into this repository (optional for dev)
+        working-directory: ${{ env.THIS_REPO_PATH }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          SOURCE_FILE="../ha-core/translations.tar.gz"
+          TARGET_DIR="translations"
+          TARGET_FILE="${TARGET_DIR}/translations_${VERSION}.tar.gz"
+
+          echo "Saving translations package for version: $VERSION"
+
+          if [ ! -f "$SOURCE_FILE" ]; then
+            echo "::warning::Downloaded package not found: $SOURCE_FILE (dev build folytatódik)"
+            ls -la ../ha-core/ || true
+            exit 0
+          fi
+
+          mkdir -p "$TARGET_DIR"
+          cp "$SOURCE_FILE" "$TARGET_FILE"
+          echo "Saved as: $TARGET_FILE"
+          ls -lh "$TARGET_FILE"
+
+      - name: Commit and push new translations file (dev)
+        working-directory: ${{ env.THIS_REPO_PATH }}
+        continue-on-error: true
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          TARGET_FILE="translations/translations_${VERSION}.tar.gz"
+
+          if [ ! -f "$TARGET_FILE" ]; then
+            echo "No new translations file to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "$TARGET_FILE"
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit (file already exists and is identical)."
+          else
+            git commit -m "Add translations for ${VERSION} (dev)"
+            git push
+            echo "Successfully pushed $TARGET_FILE"
+          fi
+
+      - name: Extract translations
+        working-directory: ha-core
+        run: |
+          if [ -f translations.tar.gz ]; then
+            tar xvf translations.tar.gz
+            echo "translations extracted"
+          else
+            echo "::warning::translations.tar.gz not found, continuing without it"
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push arm/v7 (dev)
+        if: needs.prepare.outputs.armv7image_ready != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ha-core
+          file: ha-core/Dockerfile
+          platforms: linux/arm/v7
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${{ needs.prepare.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-dev
+          provenance: false
+          build-args: |
+            BUILD_FROM=${{ env.BASE_IMAGE }}:${{ steps.guidedversion.outputs.tag }}
+
+  build-armv6:
+    name: Build arm/v6 (dev)
+    needs: prepare
+    if: ${{ inputs.build_armv6 }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.THIS_REPO_PATH }}
+
+      - name: Checkout official Home Assistant core (dev SHA)
+        uses: actions/checkout@v4
+        with:
+          repository: home-assistant/core
+          ref: ${{ needs.prepare.outputs.sha }}
+          path: ${{ env.HA_CORE_REPO_PATH }}
+
+      - name: Patch dockerfile
+        working-directory: ${{ env.HA_CORE_REPO_PATH }}
+        run: |
+          PATCH_FILE="../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_general.patch"
+          if [ -f "$PATCH_FILE" ]; then
+            patch Dockerfile < "$PATCH_FILE"
+          else
+            LATEST_PATCH=$(ls -1 ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_core_*.patch 2>/dev/null | sort -V | tail -n1 || true)
+            if [ -n "$LATEST_PATCH" ]; then
+              patch Dockerfile < "$LATEST_PATCH"
+            else
+              echo "No patch found"
+              exit 1
+            fi
+          fi
+
+      - name: Download translations artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: translations
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: home-assistant/core
+          run-id: ${{ needs.prepare.outputs.run_id }}
+          path: ha-core
+
+      - name: Extract translations
+        working-directory: ha-core
+        run: |
+          if [ -f translations.tar.gz ]; then
+            tar xvf translations.tar.gz
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push arm/v6 (dev)
+        uses: docker/build-push-action@v6
+        with:
+          context: ha-core
+          file: ha-core/Dockerfile
+          platforms: linux/arm/v6
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv6-${{ needs.prepare.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv6-dev
+          provenance: false
+
+  create-multi-manifest:
+    name: Create multi-arch manifest (dev)
+    needs: [prepare, build-armv7, build-armv6]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build-armv7.result == 'success' || needs.build-armv6.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch image with "dev" tag
+        run: |
+          TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          IMAGES=""
+
+          if [ "${{ needs.build-armv7.result }}" = "success" ] || [ "${{ needs.prepare.outputs.armv7image_ready }}" = "true" ]; then
+            IMAGES="$IMAGES $TARGET_IMAGE:armv7-${VERSION}"
+          fi
+
+          if [ "${{ needs.build-armv6.result }}" = "success" ]; then
+            IMAGES="$IMAGES $TARGET_IMAGE:armv6-${VERSION}"
+          fi
+
+          if [ -z "$IMAGES" ]; then
+            echo "Nincs sikeresen buildelt image a multi-arch manifesthez"
+            exit 1
+          fi
+
+          echo "Létrehozandó multi-arch image-ek a következő tag-ekkel:"
+          echo "  • $TARGET_IMAGE:dev"
+          echo "  • $TARGET_IMAGE:${VERSION}"
+          echo "Forrás image-ek: $IMAGES"
+
+          docker buildx imagetools create \
+            --tag "${TARGET_IMAGE}:dev" \
+            --tag "${TARGET_IMAGE}:${VERSION}" \
+            $IMAGES
+
+          echo ""
+          echo "Kész image-ek:"
+          echo "  • ${TARGET_IMAGE}:dev"
+          echo "  • ${TARGET_IMAGE}:${VERSION}"
+          docker buildx imagetools inspect "${TARGET_IMAGE}:dev" || true
+
+  push-dockerhub:
+    name: Push to Docker Hub (armv7 only, optional)
+    needs: [prepare, build-armv7]
+    if: |
+      always() &&
+      inputs.push_to_docker &&
+      (needs.prepare.result == 'success' &&
+       (needs.build-armv7.result == 'success' || needs.prepare.outputs.armv7image_ready == 'true'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR (olvasáshoz)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Copy armv7-dev image to Docker Hub
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          SRC="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${VERSION}"
+          DST="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7"
+
+          echo "Forrás: $SRC"
+          echo "Cél:    $DST"
+
+          docker buildx imagetools create \
+            --prefer-index=false \
+            --tag "${DST}:${VERSION}" \
+            --tag "${DST}:armv7-dev" \
+            --tag "${DST}:dev" \
+            "$SRC"
+
+          echo ""
+          echo "Kész:"
+          echo "  • ${DST}:${VERSION}"
+          echo "  • ${DST}:armv7-dev"
+          echo "  • ${DST}:dev"
