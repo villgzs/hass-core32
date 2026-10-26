@@ -2,6 +2,8 @@
 
 You can find Home-assistant official releases here: [https://github.com/home-assistant/core/releases](https://github.com/home-assistant/core/releases)
 
+[Original Home-Assistant Core repository](https://github.com/home-assistant/core)
+
 Latest official image can be found here: [https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest](https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest)
 
 ### [Home-assistant/core - actions for releases](https://github.com/home-assistant/core/actions?query=event%3Arelease)
