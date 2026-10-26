@@ -2,7 +2,7 @@
 
 You can find Home-assistant official releases here: [https://github.com/home-assistant/core/releases](https://github.com/home-assistant/core/releases)
 
-[Original Home-Assistant Core repository](https://github.com/home-assistant/core)
+[Original Home-Assistant Core repository](https://github.com/home-assistant/core) [Wheels](https://github.com/home-assistant/wheels) [Docker](https://github.com/home-assistant/docker) [Docker-base](https://github.com/home-assistant/docker-base)
 
 Latest official image can be found here: [https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest](https://github.com/home-assistant/core/pkgs/container/home-assistant?tag=latest)
 
