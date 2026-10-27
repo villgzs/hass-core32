@@ -2,7 +2,7 @@
 # Áthozva a builder_new.yml-ből 2026.OKT.01.-én. Fő módostás a dockerfile forrása.
 # 2026-OKT-7: A korábbi build-new aktualizálva buld-re! 
 
-name: Build CORE-32-bit Home Assistant
+name: ADV.Build CORE-32-bit Home Assistant
 
 on:
   workflow_dispatch:
