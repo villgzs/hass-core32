@@ -84,8 +84,8 @@ jobs:
           echo "Home Assistant Core: ${VERSION}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
-          echo "dockerversion=${BASE_IMAGE_VERSION} >> $GITHUB_OUTPUT
-          echo "pythonversion=${BUILD_FROM_VERSION} >> $GITHUB_OUTPUT
+          echo "dockerversion=${BASE_IMAGE_VERSION}" >> $GITHUB_OUTPUT
+          echo "pythonversion=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
       
           # SUMMARY
           echo "Home Assistant Core: ${VERSION}" >> $GITHUB_STEP_SUMMARY
