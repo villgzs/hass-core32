@@ -15,7 +15,7 @@ on:
         type: boolean
         default: true
       required_base_version:
-        description: "Home Assistant Base Images verzió (üres=2026.10.1)"
+        description: "Home Assistant Base Images verzió (üres=2026.10.2)"
         required: false
         default: ""
       required_docker_version:
@@ -36,6 +36,9 @@ on:
         required: false
         type: boolean
         default: true
+        
+  schedule:
+    - cron: '0 3 * * *'
 
 env:
   REGISTRY: ghcr.io
@@ -84,7 +87,7 @@ jobs:
             VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
             echo "Legfrissebb változat: $VERSION"
             # Ezt vesszük alapul a friss helyett:
-            VERSION="2026.10.1"            
+            # VERSION="2026.10.2"            
             DOCKERTAGS="arm32"
           fi
                     
