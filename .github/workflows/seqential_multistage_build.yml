@@ -255,7 +255,8 @@ jobs:
 
           if [ "$HTTP_CODE" -eq 404 ]; then
             echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
-            echo "python_exists=false" >> $GITHUB_OUTPUT
+            echo "reqpython_exists=false" >> $GITHUB_OUTPUT
+            echo "reqpython_exists=false" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
@@ -265,10 +266,12 @@ jobs:
 
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
-            echo "python_exists=true" >> $GITHUB_OUTPUT
+            echo "reqpython_exists=true" >> $GITHUB_OUTPUT
+            echo "reqpython_exists=true" >> $GITHUB_STEP_SUMMARY
           else
             echo "✗ Az image még nem létezik → build szükséges"
-            echo "python_exists=false" >> $GITHUB_OUTPUT
+            echo "reqpython_exists=false" >> $GITHUB_OUTPUT
+            echo "reqpython_exists=false" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Check if ha-docker-base multi manifest image already exists on GHCR
