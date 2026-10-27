@@ -299,6 +299,7 @@ jobs:
           if [ "$HTTP_CODE" -eq 404 ]; then
             echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
             echo "baseadded_exists=false" >> $GITHUB_OUTPUT
+            echo "baseadded_exists=false" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
@@ -309,9 +310,11 @@ jobs:
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "baseadded_exists=true" >> $GITHUB_OUTPUT
+            echo "baseadded_exists=true" >> $GITHUB_STEP_SUMMARY
           else
             echo "✗ Az image még nem létezik → build szükséges"
             echo "baseadded_exists=false" >> $GITHUB_OUTPUT
+            echo "baseadded_exists=false" >> $GITHUB_STEP_SUMMARY
           fi     
 
       - name: Check if wheeler multi manifest image already exists on GHCR
@@ -319,7 +322,7 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.ha-ba-lat.outputs.basever }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
+          VERSION="${{ steps.ha-do-lat.outputs.do }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.WHEELS_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
