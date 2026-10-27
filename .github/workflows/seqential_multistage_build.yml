@@ -709,11 +709,10 @@ jobs:
     if: |
       always() &&
       needs.prepare.result == 'success' && (
-        needs.prepare.outputs.python_exists == 'true' ||
-        needs.merge-python.result == 'success' || (
-          needs.prepare.outputs.reqpython_exists == 'true' && 
-          needs.prepare.outputs.docker_python == needs.prepare.outputs.basever
-        )
+        needs.prepare.outputs.reqpython_exists == 'true' ||
+          needs.merge-python.result == 'success' && 
+          needs.prepare.outputs.reqpython_exists == 'false' && 
+          needs.prepare.outputs.docker_python == needs.prepare.outputs.basever        
       )
     runs-on: ubuntu-latest
     strategy:
