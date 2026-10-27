@@ -92,45 +92,7 @@ jobs:
           echo "tags=${DOCKERTAGS}" >> $GITHUB_STEP_SUMMARY
           echo "BASE_IMAGE_VERSION: ${BASE_IMAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "BUILD_FROM: ${BUILD_FROM_LINE}" >> $GITHUB_STEP_SUMMARY
-          echo "BUILD_FROM Version: ${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY
-
-      - name: Get latest Home Assistant stable version
-        id: ha-ha
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -n "${{ inputs.core_version }}" ]; then
-            VERSION="${{ inputs.core_version }}"
-            DOCKERTAGS="testingphase"
-          else
-            VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
-            DOCKERTAGS="${{ env.EXTRA_TAGS }}"
-          fi
-      
-          echo "Home Assistant Core: ${VERSION}"
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
-      
-          # BASE_IMAGE_VERSION lekérése a core builder.yml-ből az adott VERSION tag-ről
-          BASE_IMAGE_VERSION=$(gh api "repos/home-assistant/core/contents/.github/workflows/builder.yml?ref=${VERSION}" \
-            --jq '.content' | base64 -d | grep -oP 'BASE_IMAGE_VERSION:\s*"\K[^"]+')
-      
-          echo "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}" >> $GITHUB_OUTPUT
-      
-          # Dockerfile lekérése a home-assistant/docker repóból a BASE_IMAGE_VERSION alapján
-          DOCKERFILE_CONTENT=$(gh api "repos/home-assistant/docker/contents/Dockerfile?ref=${BASE_IMAGE_VERSION}" \
-            --jq '.content' | base64 -d)
-      
-          # ARG BUILD_FROM sor és a végén levő verziószám kinyerése
-          BUILD_FROM_LINE=$(echo "$DOCKERFILE_CONTENT" | grep '^ARG BUILD_FROM=' )
-          BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
-      
-          # SUMMARY
-          echo "Home Assistant Core: ${VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "tags=${DOCKERTAGS}" >> $GITHUB_STEP_SUMMARY
-          echo "BASE_IMAGE_VERSION: ${BASE_IMAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "BUILD_FROM: ${BUILD_FROM_LINE}" >> $GITHUB_STEP_SUMMARY
-          echo "BUILD_FROM Version: ${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "BUILD_FROM Version: ${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY      
 
       - name: Check if armv7 image already exists on GHCR
         id: check
@@ -283,7 +245,7 @@ jobs:
           MATCHING_LINE=$(grep "^${VERSION}" "$GUIDANCE_FILE" || true)
       
           if [ -z "$MATCHING_LINE" ]; then
-            echo "::error::Version ${VERSION} not found in $GUIDANCE_FILE"
+            echo "::warning::Version ${VERSION} not found in $GUIDANCE_FILE"
             echo "Available versions:"
             cat "$GUIDANCE_FILE"
             echo 
