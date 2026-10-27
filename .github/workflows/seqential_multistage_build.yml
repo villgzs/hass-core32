@@ -15,7 +15,7 @@ on:
         type: boolean
         default: true
       required_base_version:
-        description: "Home Assistant Base Images verzió (üres=2026.10.2)"
+        description: "Home Assistant Base Images verzió (üres=legfrissebb stable)"
         required: false
         default: ""
       required_docker_version:
