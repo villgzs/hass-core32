@@ -69,8 +69,10 @@ jobs:
       wheelsver: ${{ steps.ha-we-lat.outputs.wheelsver }}
       base_tags: ${{steps.ha-ba-lat.outputs.base_tags}}
       docker_tags: ${{steps.ha-do-lat.outputs.docker_tags}}
+      docker_python: ${{steps.ha-do-lat.outputs.docker_python}}
       alpine_exists: ${{steps.check-alpine.outputs.alpine_exists}}
       python_exists: ${{steps.check-python.outputs.python_exists}}
+      reqpython_exists: ${{steps.check-python.outputs.reqpython_exists}}
       baseadded_exists: ${{steps.check-hadockerbase.outputs.baseadded_exists}}
       wheeler_exists: ${{steps.check-wheeler.outputs.wheeler_exists}}
     steps:
@@ -110,13 +112,24 @@ jobs:
             VERSION=$(gh api repos/${{env.HA_DOCKER_REPO}}/releases/latest --jq '.tag_name')
             DOCKERTAGS="latest"
           fi
+
+          # Dockerfile lekérése a home-assistant/docker repóból a BASE_IMAGE_VERSION alapján
+          DOCKERFILE_CONTENT=$(gh api "repos/home-assistant/docker/contents/Dockerfile?ref=${BASE_IMAGE_VERSION}" \
+            --jq '.content' | base64 -d)
+      
+          # ARG BUILD_FROM sor és a végén levő verziószám kinyerése
+          BUILD_FROM_LINE=$(echo "$DOCKERFILE_CONTENT" | grep '^ARG BUILD_FROM=' )
+          BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
           
-          echo "Home Assistant version: ${VERSION}"
+          echo "Home Assistant - Docker version: ${VERSION}"
+          echo " - build from: BUILD_FROM_VERSION"
           echo "dockerver=${VERSION}" >> $GITHUB_OUTPUT
-          echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+          echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
+          echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
           
           echo "dockerver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+          echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY
 
       - name: Get latest stable wheels version
         id: ha-we-lat
@@ -218,12 +231,52 @@ jobs:
             echo "python_exists=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check if required python multi manifest image already exists on GHCR
+        id: check-reqpython
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ha-do-lat.outputs.docker_python }}"
+          TAG="${VERSION}"
+          PACKAGE="${{env.PYTHON_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
+          PACKAGE="${PACKAGE#*/}"
+          OWNER="${{ github.repository_owner }}"
+
+          echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 404 ]; then
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
+            echo "python_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
+            [.[] | select(.metadata.container.tags[]? == $tag)] | length
+          ')
+
+          if [ "$EXISTS" -gt 0 ]; then
+            echo "✓ Az image már létezik → kihagyjuk a buildet"
+            echo "python_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ Az image még nem létezik → build szükséges"
+            echo "python_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check if ha-docker-base multi manifest image already exists on GHCR
         id: check-hadockerbase
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.ha-ba-lat.outputs.basever }}-${{ steps.ha-do-lat.outputs.dockerver }}"
+          VERSION="${{ steps.ha-do-lat.outputs.docker_python }}-${{ steps.ha-do-lat.outputs.dockerver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.HABASE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
@@ -652,10 +705,12 @@ jobs:
     needs: [prepare, merge-python]
     if: |
       always() &&
-      needs.prepare.result == 'success' &&
-      (
+      needs.prepare.result == 'success' && (
         needs.prepare.outputs.python_exists == 'true' ||
-        needs.merge-python.result == 'success'
+        needs.merge-python.result == 'success' || (
+          needs.prepare.outputs.reqpython_exists == 'true' && 
+          needs.prepare.outputs.docker_python == needs.prepare.outputs.basever
+        )
       )
     runs-on: ubuntu-latest
     strategy:
@@ -758,8 +813,8 @@ jobs:
           sbom: false
           build-args: |
             BASE_IMAGE=ghcr.io/${{env.PYTHON_IMAGE_NAME}}
-            BASE_VERSION=${{needs.prepare.outputs.basever}}
-            BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.basever}}
+            BASE_VERSION=${{needs.prepare.outputs.docker_python}}
+            BUILD_FROM=ghcr.io/${{env.PYTHON_IMAGE_NAME}}:${{needs.prepare.outputs.docker_python}}
             EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
             PIP_EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
 
@@ -786,6 +841,7 @@ jobs:
           echo "merge_python  = ${{ needs.merge-python.result }}"
           echo "docker version= ${{ needs.prepare.outputs.dockerver }}"
           echo "base version  = ${{ needs.prepare.outputs.basever }}"
+          echo "required base version  = ${{ needs.prepare.outputs.docker_python }}"
 
   merge-base-added:                 
     name: Merge-docker (base-added) manifests
@@ -806,8 +862,8 @@ jobs:
       - name: Debug info
         run: |
           echo "alpine_exists = ${{ needs.prepare.outputs.alpine_exists }}"
-          echo "python_exists = ${{ needs.prepare.outputs.python_exists }}"
-          echo "version       = ${{ needs.prepare.outputs.dockerver }}"
+          echo "reqpython_exists = ${{ needs.prepare.outputs.reqpython_exists }}"
+          echo "version       = ${{ needs.prepare.outputs.docker_python }}"
           
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -833,7 +889,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}
           tags: |            
             type=sha,prefix=sha-
-            type=raw,value=${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.dockerver}}
+            type=raw,value=${{needs.prepare.outputs.docker_python}}-${{needs.prepare.outputs.dockerver}}
     
       - name: Create manifest list and push
         working-directory: /tmp/digests
@@ -841,7 +897,7 @@ jobs:
           docker buildx imagetools create $(jq -r '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}@sha256:%s ' *)
             
-          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.dockerver}}
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }}:${{needs.prepare.outputs.docker_python}}-${{needs.prepare.outputs.dockerver}}
 
       - name: Image summary
         run: |
