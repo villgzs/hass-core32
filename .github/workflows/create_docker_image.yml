@@ -331,10 +331,32 @@ jobs:
 
       - name: Patch application - for Alpine Dockerfile
         if: ${{ inputs.patch_files }}
-        working-directory: ${{env.HA_ALPINE_REPO_PATH}}
+        working-directory: ${{ env.HA_ALPINE_REPO_PATH }}
         run: |
           echo "Alpine Dockerfile"
-          patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_basealpine_${{needs.prepare.outputs.basever}}.patch
+          
+          # A várható patch fájl elérési útja
+          EXACT_PATCH="../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_basealpine_${{ needs.prepare.outputs.basever }}.patch"
+          
+          if [ -f "$EXACT_PATCH" ]; then
+            PATCH_FILE="$EXACT_PATCH"
+            echo "A pontos verziójú patch fájl létezik: $PATCH_FILE"
+          else
+            echo "A(z) ${{ needs.prepare.outputs.basever }} verziójú patch nem található. Keresem a legmagasabb verziójú elérhető patch-et..."
+            
+            # Megkeressük a mintára illeszkedő fájlokat, és rendezés után az utolsót (legmagasabbat) vesszük
+            PATCH_FILE=$(find "../${{ env.THIS_REPO_PATH }}/patches/" -name "Dockerfile_basealpine_*.patch" | sort -V | tail -n 1)
+            
+            if [ -z "$PATCH_FILE" ] || [ ! -f "$PATCH_FILE" ]; then
+              echo "Hiba: Nem található egyetlen patch fájl sem a mintához!" >&2
+              exit 1
+            fi
+            
+            echo "Kiválasztott legmagasabb verziójú patch: $PATCH_FILE"
+          fi
+          
+          # A patch alkalmazása a kiválasztott fájllal
+          patch -p1 < "$PATCH_FILE"
 
           cat ./alpine/Dockerfile || true
 
@@ -673,7 +695,30 @@ jobs:
         working-directory: ${{ env.HA_DOCKER_REPO_PATH }}
         run: |
           echo "Patch Docker Dockerfile"
-          patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_docker_${{needs.prepare.outputs.dockerver}}.patch   
+          
+          # A várható patch fájl elérési útja
+          EXACT_PATCH="../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_docker_${{ needs.prepare.outputs.dockerver }}.patch"
+          
+          if [ -f "$EXACT_PATCH" ]; then
+            PATCH_FILE="$EXACT_PATCH"
+            echo "A pontos verziójú patch fájl létezik: $PATCH_FILE"
+          else
+            echo "A(z) ${{ needs.prepare.outputs.dockerver }} verziójú patch nem található. Keresem a legmagasabb verziójú elérhető patch-et..."
+            
+            # Megkeressük a mintára illeszkedő fájlokat, és verzió szerint rendezve az utolsót vesszük
+            PATCH_FILE=$(find "../${{ env.THIS_REPO_PATH }}/patches/" -name "Dockerfile_docker_*.patch" | sort -V | tail -n 1)
+            
+            if [ -z "$PATCH_FILE" ] || [ ! -f "$PATCH_FILE" ]; then
+              echo "Hiba: Nem található egyetlen patch fájl sem a Docker mintához!" >&2
+              exit 1
+            fi
+            
+            echo "Kiválasztott legmagasabb verziójú patch: $PATCH_FILE"
+          fi
+          
+          # A patch alkalmazása a kiválasztott fájllal
+          patch -p1 < "$PATCH_FILE"
+          
           echo "---------"
           cat Dockerfile
 
