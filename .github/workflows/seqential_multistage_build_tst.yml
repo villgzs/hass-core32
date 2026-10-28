@@ -270,6 +270,7 @@ jobs:
             [.[] | select(.metadata.container.tags[]? == $tag)] | length
           ')
 
+          echo "Reqired python version: $VERSION" >> $GITHUB_STEP_SUMMARY
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "reqpython_exists=true" >> $GITHUB_OUTPUT
