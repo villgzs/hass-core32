@@ -719,9 +719,12 @@ jobs:
     if: |
       always() &&
       needs.prepare.result == 'success' && 
-      needs.prepare.outputs.baseadded_exists == 'false' && (
+      ( needs.prepare.outputs.baseadded_exists != 'true' ) && 
+      (
           needs.prepare.outputs.reqpython_exists == 'true'  ||        
-          needs.merge-python.result == 'success'  )
+          needs.merge-python.result == 'success'  ||
+          needs.merge-python.result == 'skipped'
+      )
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
