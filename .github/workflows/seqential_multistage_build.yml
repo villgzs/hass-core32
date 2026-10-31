@@ -5,7 +5,7 @@
 # from home-assistant/docker-base - python
 # from home-assistant/docker      - docker
 
-name: Sequential multi-stage build(alpine/python/docker+wheeler)
+name: TST-Sequential multi-stage build(alpine/python/docker+wheeler)
 
 on:
   workflow_dispatch:
@@ -37,8 +37,8 @@ on:
         type: boolean
         default: true
         
-  # schedule:
-  #  - cron: '0 3 * * *'
+  schedule:
+   - cron: '0 0 * * *'
 
 env:
   REGISTRY: ghcr.io
@@ -58,6 +58,12 @@ env:
   WHEELS_FILE_PATH:
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32-repo
+  PUSH: ${{ github.event_name == 'schedule' && 'true' || inputs.push }}
+  REQUIRED_BASE_VERSION: ${{ inputs.required_base_version || '' }}
+  REQUIRED_DOCKER_VERSION: ${{ inputs.required_docker_version || '' }}
+  REQUIRED_WHEELS_VERSION: ${{ inputs.required_wheels_version || '' }}
+  PATCH_FILES: ${{ github.event_name == 'schedule' && 'true' || inputs.patch_files }}
+  TEST_BUILD: ${{ github.event_name == 'schedule' && 'true' || inputs.test_build }}
 
 jobs:
   prepare:
@@ -122,7 +128,7 @@ jobs:
           BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
           
           echo "Home Assistant - Docker version: ${VERSION}"
-          echo " - build from: BUILD_FROM_VERSION"
+          echo " - build from: ${BUILD_FROM_VERSION}"
           echo "dockerver=${VERSION}" >> $GITHUB_OUTPUT
           echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
           echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
@@ -264,6 +270,7 @@ jobs:
             [.[] | select(.metadata.container.tags[]? == $tag)] | length
           ')
 
+          echo "Reqired python version: $VERSION" >> $GITHUB_STEP_SUMMARY
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "reqpython_exists=true" >> $GITHUB_OUTPUT
@@ -389,7 +396,7 @@ jobs:
           path: ${{env.HA_ALPINE_REPO_PATH}}
 
       - name: Patch application - for Alpine Dockerfile
-        if: ${{ inputs.patch_files }}
+        if: ${{ env.PATCH_FILES }}
         working-directory: ${{ env.HA_ALPINE_REPO_PATH }}
         run: |
           echo "Alpine Dockerfile"
@@ -426,7 +433,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to the Container registry
-        if: inputs.push
+        if: env.PUSH
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -460,21 +467,21 @@ jobs:
           file: ./${{env.HA_ALPINE_REPO_PATH}}/${{env.ALPINE_FILE_PATH}}/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.ALPINE_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ env.PUSH }}
           build-args: |
             BASE_ALPINE_VERSION=${{ needs.prepare.outputs.basever }}
-            TEST_BUILD=${{ inputs.test_build }}
+            TEST_BUILD=${{ env.TEST_BUILD }}
             EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
             
       - name: Export digest
-        if: inputs.push
+        if: env.PUSH
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        if: inputs.push
+        if: env.PUSH
         uses: actions/upload-artifact@v4
         with:
           name: digests-alpine-${{ matrix.architecture }}
@@ -484,9 +491,9 @@ jobs:
 
   merge_alpine:
     name: Merge Alpine (base-alpine) Multi-Arch Manifest
-    if: | 
-      needs.prepare.outputs.alpine_exists != 'true' &&
-      inputs.push
+    if: |
+      ( needs.prepare.outputs.alpine_exists != 'true' ) &&
+      ( github.event.inputs.push == 'true' || github.event_name == 'schedule' )
     runs-on: ubuntu-latest
     needs: [prepare,build-alpine]
     
@@ -588,7 +595,7 @@ jobs:
             network=host
 
       - name: Log in to the Container registry
-        if: inputs.push
+        if: env.PUSH
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -609,7 +616,7 @@ jobs:
           file: ${{ env.HA_ALPINE_REPO_PATH }}/${{ env.PYTHON_FILE_PATH }}/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.PYTHON_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ env.PUSH }}
           provenance: false
           sbom: false
           build-args: |
@@ -617,14 +624,14 @@ jobs:
             BASE_VERSION=${{needs.prepare.outputs.basever}}
 
       - name: Export digest
-        if: inputs.push
+        if: env.PUSH
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        if: inputs.push
+        if: env.PUSH
         uses: actions/upload-artifact@v4
         with:
           name: digests-python-${{ steps.preplat.outputs.platform_tag }}
@@ -645,7 +652,7 @@ jobs:
       always() &&
       needs.prepare.result == 'success' &&
       needs.build-python.result == 'success' &&
-      inputs.push
+      ( github.event.inputs.push == 'true' || github.event_name == 'schedule' )
     runs-on: ubuntu-latest
     
     permissions:
@@ -711,11 +718,12 @@ jobs:
     needs: [prepare, merge-python]
     if: |
       always() &&
-      needs.prepare.result == 'success' && (
-        needs.prepare.outputs.reqpython_exists == 'true' ||
-          needs.merge-python.result == 'success' && 
-          needs.prepare.outputs.reqpython_exists == 'false' && 
-          needs.prepare.outputs.docker_python == needs.prepare.outputs.basever        
+      needs.prepare.result == 'success' && 
+      ( needs.prepare.outputs.baseadded_exists != 'true' ) && 
+      (
+          needs.prepare.outputs.reqpython_exists == 'true'  ||        
+          needs.merge-python.result == 'success'  ||
+          needs.merge-python.result == 'skipped'
       )
     runs-on: ubuntu-latest
     strategy:
@@ -751,7 +759,7 @@ jobs:
           path: ${{env.HA_DOCKER_REPO_PATH}}
 
       - name: Patch application - for Docker Dockerfile
-        if: ${{ inputs.patch_files }}
+        if: ${{ env.PATCH_FILES }}
         working-directory: ${{ env.HA_DOCKER_REPO_PATH }}
         run: |
           echo "Patch Docker Dockerfile"
@@ -792,7 +800,7 @@ jobs:
             network=host
 
       - name: Log in to the Container registry
-        if: inputs.push
+        if: env.PUSH
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -813,7 +821,7 @@ jobs:
           file: ${{ env.HA_DOCKER_REPO_PATH }}/${{ env.HABASE_FILE_PATH }}/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.HABASE_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ env.PUSH }}
           provenance: false
           sbom: false
           build-args: |
@@ -824,14 +832,14 @@ jobs:
             PIP_EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
 
       - name: Export digest
-        if: inputs.push
+        if: env.PUSH
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        if: inputs.push
+        if: env.PUSH
         uses: actions/upload-artifact@v4
         with:
           name: digests-added-${{ steps.preplat.outputs.platform_tag }}
@@ -855,7 +863,7 @@ jobs:
       always() &&
       needs.prepare.result == 'success' &&
       needs.build-base-added.result == 'success' &&
-      inputs.push
+      ( github.event.inputs.push == 'true' || github.event_name == 'schedule' )
     runs-on: ubuntu-latest
     
     permissions:
@@ -962,7 +970,7 @@ jobs:
           path: ${{env.HA_WHEELS_REPO_PATH}}
 
       - name: Patch application - for wheels Dockerfile
-        if: inputs.patch_files
+        if: env.PATCH_FILES
         working-directory: ${{ env.HA_WHEELS_REPO_PATH }}
         run: |
           echo "Patch Wheels Dockerfile"
@@ -1000,7 +1008,7 @@ jobs:
           file: ${{ env.HA_WHEELS_REPO_PATH }}/${{ env.WHEELS_FILE_PATH }}/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.WHEELS_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ env.PUSH }}
           provenance: false
           sbom: false
           build-args: |
@@ -1013,14 +1021,14 @@ jobs:
             BUILD_ARCH=armv7            
 
       - name: Export digest
-        if: inputs.push
+        if: env.PUSH
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        if: inputs.push
+        if: env.PUSH
         uses: actions/upload-artifact@v4
         with:
           name: digests-wheeler-${{ steps.preplat.outputs.platform_tag }}
