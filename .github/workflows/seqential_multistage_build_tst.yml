@@ -128,7 +128,7 @@ jobs:
           BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
           
           echo "Home Assistant - Docker version: ${VERSION}"
-          echo " - build from: BUILD_FROM_VERSION"
+          echo " - build from: ${BUILD_FROM_VERSION}"
           echo "dockerver=${VERSION}" >> $GITHUB_OUTPUT
           echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
           echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
@@ -718,12 +718,10 @@ jobs:
     needs: [prepare, merge-python]
     if: |
       always() &&
-      needs.prepare.result == 'success' && (
-        needs.prepare.outputs.reqpython_exists == 'true' ||
-          needs.merge-python.result == 'success' && 
-          needs.prepare.outputs.reqpython_exists == 'false' && 
-          needs.prepare.outputs.docker_python == needs.prepare.outputs.basever        
-      )
+      needs.prepare.result == 'success' && 
+      needs.prepare.outputs.baseadded_exists == 'false' && (
+          needs.prepare.outputs.reqpython_exists == 'true'  ||        
+          needs.merge-python.result == 'success'  )
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
