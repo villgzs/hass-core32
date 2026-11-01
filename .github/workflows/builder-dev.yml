@@ -22,8 +22,8 @@ on:
         type: boolean
         required: false
         default: false
-  # schedule:
-  #   - cron: "0 5 * * *"   # pl. naponta hajnalban a dev buildhez
+  schedule:
+     - cron: "0 0 * * *"   # pl. naponta hajnalban a dev buildhez
   # push:
   #   branches:
   #     - main
