@@ -136,42 +136,57 @@ jobs:
           fi
 
       - name: Find the Build images workflow run for the latest stable tag
-        # working-directory: ha-core
         id: findrunid
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.ha.outputs.version }}"
           echo "Looking for tag: $TAG"
-
           RUN_ID=""
+          RUN_STATUS=""
+      
+          # 1) Először sikeres futást keresünk
           for i in 1 2 3 4 5; do
+            RUN_ID=$(gh api \
+              "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=success&per_page=50" \
+              --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
+              | head -n1)
+      
+            if [ -n "$RUN_ID" ]; then
+              RUN_STATUS="success"
+              break
+            fi
+            echo "Még nem található sikeres futás (próba $i/5). Várunk..."
+            sleep 3
+          done
           
-              # RUN_ID=$(gh api \
-              #   "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=50" \
-              #   --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
-              #   | head -n1)
-
+          # 2) Ha nincs sikeres, akkor sikertelen (failure) futást is megnézünk
+          echo "Sikertelen futás keresése..."
+          if [ -z "$RUN_ID" ]; then
+            echo "Sikeres futás nem található, most a sikertelen (failure) futást keresem..."
+            for i in 1 2 3 4 5; do
               RUN_ID=$(gh api \
-                "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=success&per_page=50" \
+                "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=failure&per_page=50" \
                 --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
                 | head -n1)
-
+      
               if [ -n "$RUN_ID" ]; then
-                  break
-                fi
-
-              echo "Még nem található (próba $i/5). Várunk 90 másodpercet..."
+                RUN_STATUS="failure"
+                break
+              fi
+              echo "Még nem található sikertelen futás sem (próba $i/5). Várunk..."
               sleep 3
-          done
+            done
+          fi
       
           if [ -z "$RUN_ID" ]; then
-            echo "Nem találtam sikeres Build images futást a $TAG taghez"
+            echo "Nem találtam sem sikeres, sem sikertelen Build images futást a $TAG taghez"
             exit 1
           fi
       
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-          echo "Found run-id: $RUN_ID"
+          echo "run_status=$RUN_STATUS" >> $GITHUB_OUTPUT
+          echo "Found run-id: $RUN_ID (status: $RUN_STATUS)"
 
   build-armv7:
     name: Build arm/v7
