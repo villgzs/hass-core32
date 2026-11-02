@@ -32,7 +32,7 @@ env:
   
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  EXTRA_TAGS: "arm32;latest"
+  EXTRA_TAGS: "latest"
   BASE_IMAGE: "ghcr.io/villgzs/hass-core32-baseadded"
   BASE_IMAGE_TAG: "2026.06.1-2026.07.0"
   # Dockerfile: relative to the repository root (/)
@@ -530,7 +530,7 @@ jobs:
             --prefer-index=false \
             --tag "${DST}:${VERSION}" \
             --tag "${DST}:armv7-${VERSION}" \
-            --tag "${DST}:latest" \
+            --tag "${DST}:${{needs.prepare.outputs.tags}}" \
             "$SRC"
 
           docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${VERSION}"
@@ -540,7 +540,7 @@ jobs:
           echo "Kész:"
           echo "  • ${DST}:${VERSION}"
           echo "  • ${DST}:armv7-${VERSION}"
-          echo "  • ${DST}:latest"
+          echo "  • ${DST}:${{needs.prepare.outputs.tags}}"
 
       - name: Checkout repository
         uses: actions/checkout@v4
