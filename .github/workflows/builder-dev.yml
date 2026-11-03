@@ -47,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ha.outputs.version }}
+      jobversion: ${{ steps.ha.outputs.jobversion }}
       tags: ${{ steps.ha.outputs.tags }}
       armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
       run_id: ${{ steps.findrunid.outputs.run_id }}
