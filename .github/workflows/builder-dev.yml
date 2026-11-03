@@ -39,6 +39,7 @@ env:
   HA_CORE_REPO_PATH: ha-core
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32-repo
+  BUILD_TYPE: core
 
 jobs:
   prepare:
@@ -149,6 +150,23 @@ jobs:
           fi
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
           echo "Found run-id: $RUN_ID"
+
+      - name: Get ha-version
+        id: version
+        uses: home-assistant/actions/helpers/version@master 
+        with:
+          type: ${{ env.BUILD_TYPE }}
+
+      - name: Display the original version number
+        id: dispversion
+        run: |
+          ORIG_ID="${{ steps.version.outputs.version }}"
+          if [ -z "$ORIG_ID" ]; then
+            echo "::error::ORIG_ID hiányzik"
+            
+          fi
+          echo "origversion=$ORIG_ID" >> $GITHUB_OUTPUT
+          echo "Version come from Home-Assistant : $ORIG_ID"
 
   build-armv7:
     name: Build arm/v7 (dev)
