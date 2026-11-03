@@ -51,6 +51,9 @@ jobs:
       armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
       run_id: ${{ steps.findrunid.outputs.run_id }}
       sha: ${{ steps.ha.outputs.sha }}
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Get latest successful Build images run from home-assistant/core (dev)
         id: ha
