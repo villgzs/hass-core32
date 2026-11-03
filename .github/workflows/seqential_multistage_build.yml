@@ -38,7 +38,8 @@ on:
         default: true
         
   schedule:
-   - cron: '0 23 * * *'
+   - cron: '11 01 * * *'
+     timezone: 'Europe/Budapest'
 
 env:
   REGISTRY: ghcr.io
