@@ -23,7 +23,9 @@ on:
         required: false
         default: false
   schedule:
-     - cron: "0 0 * * *"   # pl. naponta hajnalban a dev buildhez
+     - cron: "27 5 * * *"   # pl. naponta hajnalban a dev buildhez
+       timezone: 'Europe/Budapest'
+       
   # push:
   #   branches:
   #     - main
