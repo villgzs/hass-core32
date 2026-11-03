@@ -77,26 +77,59 @@ jobs:
           DISPLAY_TITLE=$(echo "$RUN_JSON" | jq -r '.display_title // empty')
           CREATED_AT=$(echo "$RUN_JSON" | jq -r '.created_at' | cut -dT -f1)
 
+          JOB_ID=$(gh api \
+            "/repos/home-assistant/core/actions/runs/${RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.name | test("Initialize"; "i")) | .id' | head -1)
+
+          JOBVERSION=""
+          if [ -n "$JOB_ID" ]; then
+            # 2. Letöltjük a job logot és kikeressük a version= sort
+            # (a helper action GITHUB_OUTPUT-ba írja, a logban is látszik)
+            LOG_TMP=$(mktemp)
+            if gh api \
+                 -H "Accept: application/vnd.github+json" \
+                 "/repos/home-assistant/core/actions/jobs/${JOB_ID}/logs" \
+                 > "$LOG_TMP" 2>/dev/null; then
+              # A leggyakoribb minták a version helperből
+              JOBVERSION=$(grep -oE 'version=[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9]+)?' "$LOG_TMP" \
+                           | head -1 | cut -d= -f2 \
+                           || true)
+              # fallback: ha a logban csak a step kimenete van
+              if [ -z "$JOBVERSION" ]; then
+                JOBVERSION=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.dev[0-9]{12}' "$LOG_TMP" | head -1 || true)
+              fi
+              rm -f "$LOG_TMP"
+            fi
+          fi
+
+          # Ha nem sikerült kinyerni, fallback a régi módszerre
+          if [ -z "$JOBVERSION" ]; then
+            echo "::warning::Nem sikerült a job logból kinyerni a verziót, fallback-et használok"
+            JOBVERSION="dev-${CREATED_AT}-${SHORT_SHA}"
+          fi
           # Verzió: ha van explicit verzió a futásban, azt használjuk, különben dev-<sha>
           # A hivatalos builder a version helperrel állítja be (nightly)
           # Itt a short SHA + dátum ad stabil, egyedi taget
-          VERSION="dev-${CREATED_AT}-${SHORT_SHA}"
+          VERSION="$JOBVERSION"
           DOCKERTAGS="${{ env.EXTRA_TAGS }}"
 
           echo "Found successful run on dev:"
-          echo "  run_id     = $RUN_ID"
-          echo "  head_sha   = $HEAD_SHA"
-          echo "  short_sha  = $SHORT_SHA"
-          echo "  created_at = $CREATED_AT"
-          echo "  title      = $DISPLAY_TITLE"
-          echo "  version    = $VERSION"
+          echo "  run_id       = $RUN_ID"
+          echo "  head_sha     = $HEAD_SHA"
+          echo "  short_sha    = $SHORT_SHA"
+          echo "  created_at   = $CREATED_AT"
+          echo "  title        = $DISPLAY_TITLE"
+          echo "  version      = $VERSION"
+          echo "  jobversion   = $JOBVERSION"
 
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "jobversion=${JOBVERSION}" >> $GITHUB_OUTPUT
           echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
           echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
           echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
 
           echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "Job version: ${JOBVERSION}" >> $GITHUB_STEP_SUMMARY
           echo "SHA: ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
           echo "Run ID: ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
 
