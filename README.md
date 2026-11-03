@@ -74,5 +74,6 @@ docker run -d \
 
 - [Github - Andrew Youll and Andrew Youll](https://github.com/adyoull/HA-ARMv7)
 - [Github - Petr Gregor](https://github.com/Gregy/homeassistant-armv7) and [Dockerhub](https://hub.docker.com/r/gregy/homeassistant-armv7)
+- [Don't forget the latest official](https://hub.docker.com/r/homeassistant/armv7-homeassistant/tags)
 
 
