@@ -80,40 +80,70 @@ jobs:
           # Próbáljuk kiolvasni a display_title-ból vagy a head_branch-ből
           DISPLAY_TITLE=$(echo "$RUN_JSON" | jq -r '.display_title // empty')
           CREATED_AT=$(echo "$RUN_JSON" | jq -r '.created_at' | cut -dT -f1)
+          CHECK_SUITE_ID=$(echo "$RUN_JSON" | jq -r '.check_suite_id')
 
-          JOB_ID=$(gh api \
-            "/repos/home-assistant/core/actions/runs/${RUN_ID}/jobs" \
-            --jq '.jobs[] | select(.name | test("Initialize"; "i")) | .id' | head -1)
+          echo "Found successful run on dev:"
+          echo "  run_id          = $RUN_ID"
+          echo "  check_suite_id  = $CHECK_SUITE_ID"
+          echo "  head_sha        = $HEAD_SHA"
+          echo "  short_sha       = $SHORT_SHA"
+          echo "  created_at      = $CREATED_AT"
+          echo "  title           = $DISPLAY_TITLE"
 
+          # --- Job verzió kinyerése a check suite log ZIP-ből ---
           JOBVERSION=""
-          if [ -n "$JOB_ID" ]; then
-            # 2. Letöltjük a job logot és kikeressük a version= sort
-            # (a helper action GITHUB_OUTPUT-ba írja, a logban is látszik)
-            LOG_TMP=$(mktemp)
+          TMPDIR=$(mktemp -d)
+          LOG_ZIP="${TMPDIR}/suite-logs.zip"
+
+          # 1. Letöltés a suites URL-ről (a te példád szerint)
+          #    Authentikált letöltés szükséges
+          HTTP_CODE=$(curl -sL -o "$LOG_ZIP" -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://github.com/home-assistant/core/suites/${CHECK_SUITE_ID}/logs?attempt=1")
+
+          if [ "$HTTP_CODE" = "200" ] && [ -s "$LOG_ZIP" ]; then
+            # 2. Kicsomagolás és a Publish version files log keresése
+            unzip -q -o "$LOG_ZIP" -d "$TMPDIR" || true
+
+            # A fájl neve tipikusan: 0_Publish version files.txt (vagy hasonló)
+            PUBLISH_LOG=$(find "$TMPDIR" -type f -iname '*Publish*version*files*.txt' | head -1)
+
+            if [ -n "$PUBLISH_LOG" ] && [ -f "$PUBLISH_LOG" ]; then
+              # 3. INPUTS_VERSION: 2026.12.0.dev202611030216 kinyerése
+              JOBVERSION=$(grep -oE 'INPUTS_VERSION:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9]+)?' "$PUBLISH_LOG" \
+                           | head -1 \
+                           | sed -E 's/INPUTS_VERSION:[[:space:]]*//' \
+                           || true)
+            fi
+          else
+            echo "::warning::Suite log letöltés sikertelen (HTTP $HTTP_CODE), próbálok API-s fallbacket"
+          fi
+
+          # Fallback 1: teljes run log (API)
+          if [ -z "$JOBVERSION" ]; then
+            echo "Próbálom a /actions/runs/.../logs endpointot..."
             if gh api \
                  -H "Accept: application/vnd.github+json" \
-                 "/repos/home-assistant/core/actions/jobs/${JOB_ID}/logs" \
-                 > "$LOG_TMP" 2>/dev/null; then
-              # A leggyakoribb minták a version helperből
-              JOBVERSION=$(grep -oE 'version=[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9]+)?' "$LOG_TMP" \
-                           | head -1 | cut -d= -f2 \
-                           || true)
-              # fallback: ha a logban csak a step kimenete van
-              if [ -z "$JOBVERSION" ]; then
-                JOBVERSION=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.dev[0-9]{12}' "$LOG_TMP" | head -1 || true)
+                 "/repos/home-assistant/core/actions/runs/${RUN_ID}/logs" \
+                 > "$LOG_ZIP" 2>/dev/null; then
+              unzip -q -o "$LOG_ZIP" -d "$TMPDIR" || true
+              PUBLISH_LOG=$(find "$TMPDIR" -type f -iname '*Publish*version*files*.txt' | head -1)
+              if [ -n "$PUBLISH_LOG" ]; then
+                JOBVERSION=$(grep -oE 'INPUTS_VERSION:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9]+)?' "$PUBLISH_LOG" \
+                             | head -1 \
+                             | sed -E 's/INPUTS_VERSION:[[:space:]]*//' \
+                             || true)
               fi
-              rm -f "$LOG_TMP"
             fi
           fi
 
-          # Ha nem sikerült kinyerni, fallback a régi módszerre
+          # Fallback 2: ha még mindig nincs, a régi módszer
           if [ -z "$JOBVERSION" ]; then
-            echo "::warning::Nem sikerült a job logból kinyerni a verziót, fallback-et használok"
+            echo "::warning::Nem sikerült a jobverziót kinyerni, fallback-et használok"
             JOBVERSION="dev-${CREATED_AT}-${SHORT_SHA}"
           fi
-          # Verzió: ha van explicit verzió a futásban, azt használjuk, különben dev-<sha>
-          # A hivatalos builder a version helperrel állítja be (nightly)
-          # Itt a short SHA + dátum ad stabil, egyedi taget
+
           VERSION="$JOBVERSION"
           DOCKERTAGS="${{ env.EXTRA_TAGS }}"
 
