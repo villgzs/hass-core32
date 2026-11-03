@@ -1,3 +1,3 @@
 # Translations for HA-CORE
 
-They come from Official build of Home Assistant Core as they are atrifacts. Artifacts removes after a time periode. It is a backup for the future.
+These are artifacts from the official Home Assistant Core build. Since they are automatically deleted after some time, I keep this backup for future reference.
