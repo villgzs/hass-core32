@@ -62,7 +62,7 @@ jobs:
         run: |
           if [ -n "${{ inputs.core_version }}" ]; then
             VERSION="${{ inputs.core_version }}"
-            DOCKERTAGS="testingphase"
+            DOCKERTAGS="beta"
           else
             VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
             DOCKERTAGS="${{ env.EXTRA_TAGS }}"
