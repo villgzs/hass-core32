@@ -42,6 +42,9 @@ env:
   BUILD_TYPE: core
 
 jobs:
+  call-time-workflow:  
+    uses: villgzs/villgzs/.github/workflows/get-time.yml@main   # ← helyi reusable workflow
+    
   prepare:
     name: Prepare source (dev branch)
     runs-on: ubuntu-latest
