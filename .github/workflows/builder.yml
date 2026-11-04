@@ -55,6 +55,13 @@ jobs:
       armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
       run_id: ${{ steps.findrunid.outputs.run_id }}
     steps:
+      - name: Aktuális idő kiírása
+        run: |
+          CURRENT_TIME=$(date)
+          echo "Aktuális UTC idő: $CURRENT_TIME"
+          echo "### Futás Összegzés" >> $GITHUB_STEP_SUMMARY
+          echo "- **Aktuális UTC idő:** $CURRENT_TIME" >> $GITHUB_STEP_SUMMARY
+      
       - name: Get latest Home Assistant stable version
         id: ha
         env:
