@@ -67,6 +67,9 @@ env:
   TEST_BUILD: ${{ github.event_name == 'schedule' && 'true' || inputs.test_build }}
 
 jobs:
+  call-time-workflow:  
+    uses: villgzs/villgzs/.github/workflows/get-time.yml@main   # ← helyi reusable workflow
+    
   prepare:
     name: Prepare source
     runs-on: ubuntu-latest
