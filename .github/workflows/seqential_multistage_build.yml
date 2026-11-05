@@ -1021,7 +1021,7 @@ jobs:
           file_path.write_text(updated_content, encoding="utf-8")
           print("Csere kész.")
           '
-          grep -n "villgzs.github.io\|wheels.home-assistant.io" wheels-repo/builder/__main__.py 
+          grep -n "villgzs.github.io\|wheels.home-assistant.io" builder/__main__.py 
 
       - name: Patch application - for wheels Dockerfile
         if: env.PATCH_FILES
