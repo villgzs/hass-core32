@@ -1030,16 +1030,19 @@ jobs:
           echo "Patch Wheels Dockerfile"
 
           SPECIFIC_PATCH="Dockerfile_wheels_${{ needs.prepare.outputs.wheelsver }}.patch"
+          PATCH_PATH="../${{ env.THIS_REPO_PATH }}/patches/"
         
-          if [ -f "$SPECIFIC_PATCH" ]; then
+          if [ -f "$PATCH_PATH/$SPECIFIC_PATCH" ]; then
             echo "A specifikus patch létezik, ezt használjuk: $SPECIFIC_PATCH"
             echo "PATCH_FILE=$SPECIFIC_PATCH" >> $GITHUB_ENV
+            PATCH_FILE="$SPECIFIC_PATCH"
           else
             echo "A specifikus patch nem létezik, az általánosat használjuk: Dockerfile_wheels.patch"
             echo "PATCH_FILE=Dockerfile_wheels.patch" >> $GITHUB_ENV
+            PATCH_FILE="Dockerfile_wheels.patch"
           fi
           
-          patch -p1 < "../${{ env.THIS_REPO_PATH }}/patches/$PATCH_FILE"
+          patch -p1 < "$PATCH_PATH/$PATCH_FILE"
           echo "---------"
           cat Dockerfile
 
