@@ -1,0 +1,11 @@
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -4,7 +4,7 @@
+ ARG \
+     BUILD_ARCH \
+     CPYTHON_ABI \
+-    PIP_EXTRA_INDEX_URL=https://wheels.home-assistant.io/musllinux-index/
++    PIP_EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
+ 
+ SHELL ["/bin/bash", "-exo", "pipefail", "-c"]
+ 
