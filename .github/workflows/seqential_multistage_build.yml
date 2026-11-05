@@ -979,12 +979,67 @@ jobs:
           ref: ${{ needs.prepare.outputs.wheelsver }}
           path: ${{env.HA_WHEELS_REPO_PATH}}
 
+      - name: Apply skip_auditwheel.patch
+        shell: bash
+        working-directory: ${{ env.HA_WHEELS_REPO_PATH }}
+        if: always()
+        run: |
+          cp ../build-repo/patches/skip_auditwheel.patch . || true
+          patch -p1 < skip_auditwheel.patch || true
+          tail -n 100 builder/wheel.py || true   
+
+      - name: Update _ARCH_PLAT in builder/wheel.py
+        shell: bash
+        working-directory: ${{ env.HA_WHEELS_REPO_PATH }}
+        run: |
+          python3 -c '
+          import re
+          from pathlib import Path
+
+          file_path = Path("builder/wheel.py")
+          content = file_path.read_text(encoding="utf-8")
+
+          new_arch_plat = """_ARCH_PLAT = {
+              "amd64": "x86_64",
+              "i386": "i686",
+              "aarch64": "aarch64",
+              "armhf": "armv6l",
+              "armv7": "armv7l",
+          }""" 
+
+          updated_content = re.sub(r"_ARCH_PLAT\s*=\s*\{[^}]*\}", new_arch_plat, content)
+          file_path.write_text(updated_content, encoding="utf-8")
+          '
+          
+          cat builder/wheel.py
+
+          python3 -c '
+          from pathlib import Path
+          file_path = Path("builder/__main__.py")
+          content = file_path.read_text(encoding="utf-8")
+          updated_content = content.replace("wheels.home-assistant.io", "villgzs.github.io")
+          file_path.write_text(updated_content, encoding="utf-8")
+          print("Csere kész.")
+          '
+          grep -n "villgzs.github.io\|wheels.home-assistant.io" wheels-repo/builder/__main__.py 
+
       - name: Patch application - for wheels Dockerfile
         if: env.PATCH_FILES
         working-directory: ${{ env.HA_WHEELS_REPO_PATH }}
         run: |
           echo "Patch Wheels Dockerfile"
-          patch -p1 < ../${{ env.THIS_REPO_PATH }}/patches/Dockerfile_wheels_${{needs.prepare.outputs.wheelsver}}.patch   
+
+          SPECIFIC_PATCH="Dockerfile_wheels_${{ needs.prepare.outputs.wheelsver }}.patch"
+        
+          if [ -f "$SPECIFIC_PATCH" ]; then
+            echo "A specifikus patch létezik, ezt használjuk: $SPECIFIC_PATCH"
+            echo "PATCH_FILE=$SPECIFIC_PATCH" >> $GITHUB_ENV
+          else
+            echo "A specifikus patch nem létezik, az általánosat használjuk: Dockerfile_wheels.patch"
+            echo "PATCH_FILE=Dockerfile_wheels.patch" >> $GITHUB_ENV
+          fi
+          
+          patch -p1 < "../${{ env.THIS_REPO_PATH }}/patches/$PATCH_FILE"
           echo "---------"
           cat Dockerfile
 
