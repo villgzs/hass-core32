@@ -528,14 +528,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Copy armv7 image to Docker Hub (egy az egyben)
+      - name: Copy armv7 image to Docker Hub (homeassistant-armv7)
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           SRC="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${VERSION}"
           DST="${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7"
+          DST1="${{ secrets.DOCKERHUB_USERNAME }}/armv7-homeassistant"
 
           echo "Forrás: $SRC"
           echo "Cél:    $DST"
+          echo "Cél1:   $DST1"
 
           # Egy az egyben átmásolja az armv7 image-t (nincs multi-arch)
           docker buildx imagetools create \
@@ -543,16 +545,23 @@ jobs:
             --tag "${DST}:${VERSION}" \
             --tag "${DST}:armv7-${VERSION}" \
             --tag "${DST}:${{needs.prepare.outputs.tags}}" \
+            --tag "${DST1}:${VERSION}" \
+            --tag "${DST1}:armv7-${VERSION}" \
+            --tag "${DST1}:${{needs.prepare.outputs.tags}}" \
             "$SRC"
 
           docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:armv7-${VERSION}"
           docker buildx imagetools inspect "${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7:${VERSION}"
+          docker buildx imagetools inspect "${{ secrets.DOCKERHUB_USERNAME }}/armv7-homeassistant:${VERSION}"
 
           echo ""
           echo "Kész:"
           echo "  • ${DST}:${VERSION}"
           echo "  • ${DST}:armv7-${VERSION}"
           echo "  • ${DST}:${{needs.prepare.outputs.tags}}"
+          echo "  • ${DST1}:${VERSION}"
+          echo "  • ${DST1}:armv7-${VERSION}"
+          echo "  • ${DST1}:${{needs.prepare.outputs.tags}}"      
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -563,5 +572,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/homeassistant-armv7
+          readme-filepath: ./README.md
+          short-description: Home Assistant 32-bit (only armv7) image
+
+      - name: Update Docker Hub README - 1
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/armv7-homeassistant
           readme-filepath: ./README.md
           short-description: Home Assistant 32-bit (only armv7) image
