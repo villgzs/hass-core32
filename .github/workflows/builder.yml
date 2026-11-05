@@ -21,7 +21,7 @@ on:
         description: "Push to dockerhub"
         type: boolean
         required: false
-        default: false
+        default: true
   # schedule:
   #  - cron: "0 4 * * *"
   # push:
