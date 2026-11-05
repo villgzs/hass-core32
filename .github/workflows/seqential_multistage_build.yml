@@ -38,9 +38,8 @@ on:
         default: true
         
   schedule:
-   - cron: '11 01 * * *'
-     timezone: 'Europe/Budapest'
-
+   - cron: '11 19 * * *'
+   
 env:
   REGISTRY: ghcr.io
   ALPINE_IMAGE_NAME: ${{ github.repository }}-basealpine
