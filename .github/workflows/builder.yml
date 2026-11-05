@@ -63,6 +63,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Legutóbbi kiadások:"
+          gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name'
+          echo "------------------------------------------------------------"
+          echo "Ezekből a legfrissebb:"
+          gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | head -n 1
+          echo "------------------------------------------------------------"
+          
           if [ -n "${{ inputs.core_version }}" ]; then
             VERSION="${{ inputs.core_version }}"
             DOCKERTAGS="beta"
