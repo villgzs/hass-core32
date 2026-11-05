@@ -63,10 +63,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Legutóbbi kiadások:" | tee last-releases.txt
+          # SUMMARY 
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo " - Legutóbbi kiadások:" | tee last-releases.txt
           gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | tee -a last-releases.txt
           echo "------------------------------------------------------------" | tee -a last-releases.txt
-          echo "Ezekből a legfrissebb:" | tee -a last-releases.txt
+          echo " - Ezekből a legfrissebb:" | tee -a last-releases.txt
           gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | head -n 1 | tee -a last-releases.txt
           echo "------------------------------------------------------------" | tee -a last-releases.txt
           cat last-releases.txt >> $GITHUB_STEP_SUMMARY
