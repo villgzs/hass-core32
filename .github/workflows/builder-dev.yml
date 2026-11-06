@@ -39,6 +39,7 @@ env:
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32-repo
   BUILD_TYPE: core
+  PUSH_TO_DOCKER: ${{ github.event_name == 'schedule' && 'true' || inputs.push_to_docker }}
 
 jobs:
   call-time-workflow:  
@@ -54,6 +55,7 @@ jobs:
       armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
       run_id: ${{ steps.findrunid.outputs.run_id }}
       sha: ${{ steps.ha.outputs.sha }}
+      push_to_docker: ${{steps.ha.outputs.push_to_docker}}
     permissions:
       contents: read
       actions: read
@@ -163,6 +165,7 @@ jobs:
           echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
           echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
           echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
+          echo "push_to_docker=${{env.PUSH_TO_DOCKER}}"  >> $GITHUB_OUTPUT
 
           echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "created_at:                ${CREATED_AT}" >> $GITHUB_STEP_SUMMARY
@@ -562,7 +565,7 @@ jobs:
     needs: [prepare, build-armv7]
     if: |
       always() &&
-      inputs.push_to_docker &&
+      needs.prepare.outputs.push_to_docker &&
       ( needs.prepare.result == 'success' &&
       needs.build-armv7.result == 'success' ||
       needs.prepare.outputs.armv7image_ready )
