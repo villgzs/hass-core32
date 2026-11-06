@@ -76,7 +76,7 @@ ENV CARGO_TERM_QUIET=true \
 WORKDIR /tmp/rustc-1.97.0-src
 
 RUN set -eux; \
-    ./x.py build --stage 1 2>&1 | tee /tmp/rust-build-stage1.log; \
+    ./x.py build --stage 1 2>&1 > /tmp/rust-build-stage1.log; \
     if [ ${PIPESTATUS[0]} -ne 0 ]; then \
         echo "===== STAGE 1 BUILD FAILED – last 80 lines ====="; \
         tail -n 80 /tmp/rust-build-stage1.log; \
@@ -95,7 +95,7 @@ ENV CARGO_TERM_QUIET=true \
 WORKDIR /tmp/rustc-1.97.0-src
 
 RUN set -eux; \
-    ./x.py build --stage 2 2>&1 | tee /tmp/rust-build-stage2.log; \
+    ./x.py build --stage 2 2>&1 > /tmp/rust-build-stage2.log; \
     if [ ${PIPESTATUS[0]} -ne 0 ]; then \
         echo "===== STAGE 2 BUILD FAILED – last 80 lines ====="; \
         tail -n 80 /tmp/rust-build-stage2.log; \
