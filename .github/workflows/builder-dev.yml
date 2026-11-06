@@ -165,9 +165,10 @@ jobs:
           echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
 
           echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "Job version: ${JOBVERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "SHA: ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
-          echo "Run ID: ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
+          echo "short_sha:                 ${SHORT_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "Job version:               ${JOBVERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "SHA:                       ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "Run ID:                    ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
 
       - name: Check if armv7-dev image already exists on GHCR
         id: check
