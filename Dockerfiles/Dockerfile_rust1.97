@@ -1,0 +1,124 @@
+# docker buildx build \
+#   --platform linux/arm/v7 \
+#   -t ha-python-rust:1.97 \
+#   -f Dockerfile_rust1.97 \
+#   --load .
+
+ARG BASE=ghcr.io/villgzs/hass-core32-basepython:2026.10.0
+
+# ============================================================
+# 0. Build eszközök
+# ============================================================
+FROM ${BASE} AS deps
+
+ENV CARGO_TERM_QUIET=true
+
+RUN apk add --no-cache \
+    curl \
+    build-base \
+    musl-dev \
+    openssl-dev \
+    linux-headers \
+    pkgconf \
+    cmake \
+    python3 \
+    git \
+    ninja \
+    patch \
+    xz \
+    tar \
+    rust \
+    cargo
+
+# ============================================================
+# 1. Forrás letöltése és kicsomagolása
+# ============================================================
+FROM deps AS src
+
+WORKDIR /tmp
+RUN set -eux; \
+    curl -LO https://static.rust-lang.org/dist/rustc-1.97.0-src.tar.gz; \
+    tar xf rustc-1.97.0-src.tar.gz; \
+    rm rustc-1.97.0-src.tar.gz
+
+# ============================================================
+# 2. config.toml létrehozása
+# ============================================================
+FROM src AS config
+
+WORKDIR /tmp/rustc-1.97.0-src
+RUN printf '%s\n' \
+    '[build]' \
+    'docs = false' \
+    'compiler-docs = false' \
+    'extended = true' \
+    'tools = ["cargo"]' \
+    'jobs = 4' \
+    'rustc = "/usr/bin/rustc"' \
+    'cargo = "/usr/bin/cargo"' \
+    '' \
+    '[rust]' \
+    'codegen-units = 8' \
+    'lto = "off"' \
+    'debug = false' \
+    'debuginfo-level = 0' \
+    > config.toml
+
+# ============================================================
+# 3a. Build – Stage 1
+# ============================================================
+FROM config AS build-stage1
+
+ENV CARGO_TERM_QUIET=true \
+    CARGO_TERM_PROGRESS_WHEN=never \
+    CARGO_TERM_COLOR=never
+
+WORKDIR /tmp/rustc-1.97.0-src
+
+RUN set -eux; \
+    ./x.py build --stage 1 2>&1 | tee /tmp/rust-build-stage1.log; \
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then \
+        echo "===== STAGE 1 BUILD FAILED – last 80 lines ====="; \
+        tail -n 80 /tmp/rust-build-stage1.log; \
+        exit 1; \
+    fi
+
+# ============================================================
+# 3b. Build – Stage 2 (folytatás a stage1-ből)
+# ============================================================
+FROM build-stage1 AS build
+
+ENV CARGO_TERM_QUIET=true \
+    CARGO_TERM_PROGRESS_WHEN=never \
+    CARGO_TERM_COLOR=never
+
+WORKDIR /tmp/rustc-1.97.0-src
+
+RUN set -eux; \
+    ./x.py build --stage 2 2>&1 | tee /tmp/rust-build-stage2.log; \
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then \
+        echo "===== STAGE 2 BUILD FAILED – last 80 lines ====="; \
+        tail -n 80 /tmp/rust-build-stage2.log; \
+        exit 1; \
+    fi
+
+# ============================================================
+# 4. Install
+# ============================================================
+FROM build AS install
+
+WORKDIR /tmp/rustc-1.97.0-src
+RUN ./x.py install --prefix=/opt/rust-1.97 && \
+    /opt/rust-1.97/bin/rustc --version && \
+    /opt/rust-1.97/bin/cargo --version
+
+# ============================================================
+# 5. Végső tiszta image
+# ============================================================
+FROM ${BASE}
+
+COPY --from=install /opt/rust-1.97 /opt/rust-1.97
+
+ENV PATH=/opt/rust-1.97/bin:$PATH
+
+RUN rustc --version && cargo --version
