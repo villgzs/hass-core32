@@ -93,16 +93,9 @@ jobs:
       - name: Checkout home-assistant/core
         uses: actions/checkout@v4
         with:
-          repository: home-assistant/core
-          ref: ${{ steps.version.outputs.version }}
-          path: ha-core-repo
-          # sparse-checkout: |
-          #   requirements.txt
-          #   requirements_all.txt
-          #   homeassistant/package_constraints.txt
-          #   pyproject.toml
-          #   scripts/**
-          # sparse-checkout-cone-mode: false
+          repository: ${{ env.HA_CORE_REPO }}
+          ref: ${{ steps.version.outputs.sha }}
+          path: ${{ env.HA_CORE_REPO_PATH }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
