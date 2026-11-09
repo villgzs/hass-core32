@@ -23,7 +23,7 @@ on:
         required: false
         default: true
   schedule:
-     - cron: "01 23 * * *"   # pl. naponta hajnalban a dev buildhez
+     - cron: "00 23 * * *"   # pl. naponta hajnalban a dev buildhez
               
   # push:
   #   branches:

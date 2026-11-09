@@ -1,4 +1,4 @@
-name: ARM/V7 - INTEGRATIONS - Python wheels fabrication
+name: ARMV7-INTEGRATIONS-WHEELS
 
 on:
   workflow_dispatch:
@@ -22,7 +22,7 @@ on:
         required: false
         default: "30"  
   schedule:
-    - cron: "51 00 * * *"   
+    - cron: "00 22 * * *"   
    
 env:
   KIND: combined
