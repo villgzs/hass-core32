@@ -142,7 +142,7 @@ jobs:
           uv pip install -r requirements.txt
 
       - name: Create requirements_diff file
-        working-directory: ha-core-repo
+        working-directory: ${{ env.HA_CORE_REPO_PATH }}
         run: |
           if [[ "${GITHUB_EVENT_NAME}" =~ (schedule|workflow_dispatch) ]]; then
             echo "dispatch mode..."
