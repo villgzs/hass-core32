@@ -347,7 +347,7 @@ jobs:
             --apk "${{ env.APK }}"
 
           # Forrás bemásolása a konténerbe
-          docker cp "${{ github.workspace }}/ha-core-repo/." "wheels-${{ env.KIND }}:/data"
+          docker cp "${{ github.workspace }}/${{ env.HA_CORE_REPO_PATH }}/." "wheels-${{ env.KIND }}:/data"
 
           echo "=== Aux konténer létrehozása és indítása ==="
 
