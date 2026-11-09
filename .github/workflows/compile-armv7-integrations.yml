@@ -534,7 +534,6 @@ jobs:
           cat README.dev-core.md >> README.md || true
           cat README.dev-integrations.md >> README.md || true
           cat README.core.md >> README.md || true
-          cat README.integrations.md >> README.md || true          
 
           cat README.txt.md >> README.md
           
