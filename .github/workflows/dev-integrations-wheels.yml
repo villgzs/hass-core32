@@ -266,6 +266,7 @@ jobs:
             sed -i "/numpy/d" homeassistant/package_constraints.txt || true
           fi
 
+
       # --------------------------------------------------
       # 2. - BUILD
       # --------------------------------------------------
@@ -509,8 +510,9 @@ jobs:
           echo "#### Last build from https://github.com/home-assistant/core: ${{ steps.version.outputs.version }}  " | tee -a tobe_README.md
           echo "  "  | tee -a tobe_README.md
           
-          echo "  During the last build - armv7 - **integrations**: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
-          echo "  Number of wheels: $(find musllinux-repo -name '*.whl' | wc -l)  " | tee -a tobe_README.md
+          echo "- During the last build - armv7 - **dev-integrations**: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
+          echo "- Number of wheels: $(find musllinux-repo -name '*.whl' | wc -l)  " | tee -a tobe_README.md
+          echo "  "  | tee -a tobe_README.md
           echo " --------------------------------------------- "   | tee -a tobe_README.md
 
           git config --global user.name "github-actions[bot]"
