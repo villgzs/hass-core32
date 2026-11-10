@@ -1,4 +1,4 @@
-name: ARM/V7 - SINGLE FILE - Python wheels fabrication
+name: SINGLE-ARMV7-WHEEL
 
 on:
   workflow_dispatch:
