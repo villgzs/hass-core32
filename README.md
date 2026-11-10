@@ -32,7 +32,7 @@ USE AT YOUR OWN RISK.
 # Home Assistant Core (32-bit ARM Build)
 [*Github repository : hass-core32*](https://github.com/villgzs/hass-core32)
 
-A custom Docker build of **Home Assistant Core** optimized exclusively for **32-bit ARM (armv7)** architecture. It is designed for older Raspberry Pi models, **Orange Pi Zero** and similar single-board computers, as well as Android phones running in a **Termux + udocker** environment. This repository fetches the latest stable Home Assistant Core source, replaces the standard container configuration, and builds a container image.
+A custom Docker build of **Home Assistant Core** optimized exclusively for **32-bit ARM (armv7)** architecture. It is designed for older Raspberry Pi models, **Orange Pi Zero** and similar single-board computers, as well as Android phones running in a [**Termux + udocker**](https://github.com/villgzs/udocker_hass_core_alcatel) environment. This repository fetches the latest stable Home Assistant Core source, replaces the standard container configuration, and builds a container image.
 
 ---
 
