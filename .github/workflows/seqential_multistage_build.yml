@@ -5,7 +5,7 @@
 # from home-assistant/docker-base - python
 # from home-assistant/docker      - docker
 
-name: TST-Sequential multi-stage build(alpine/python/docker+wheeler)
+name: TST-ALPINE-PYTHON-DOCKER-WHEELER
 
 on:
   workflow_dispatch:
