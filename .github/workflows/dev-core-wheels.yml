@@ -272,7 +272,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-         
+
       - name: Pull 32-bit builder image
         run: |
           docker pull --platform ${{ env.PLATFORM }} ${{ env.BUILDER_IMAGE }}
@@ -480,15 +480,14 @@ jobs:
           } > musllinux-repo/index.html
           echo " --------------------------------------------- "      
 
-          echo "# Wheels32bit" | tee tobe_README.md
-          echo "## Musllinux wheels (armv7l) ($(date -u +'%Z %Y-%b-%d %T'))  " | tee tobe_README.md
-          echo "### Last build from https://github.com/home-assistant/core: ${{ steps.version.outputs.version }}  " | tee -a tobe_README.md       
-          
+          echo "#### Musllinux wheels (armv7l) ($(date -u +'%Z %Y-%b-%d %T'))  " | tee tobe_README.md
+          echo "  " | tee -a tobe_README.md
+          echo "#### Last build from https://github.com/home-assistant/core: ${{ steps.version.outputs.version }}  " | tee -a tobe_README.md
           echo "  "  | tee -a tobe_README.md
           
-          echo "  During the last build - armv7 - core: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
+          echo "  During the last build - armv7 - **core**: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
           echo "  Number of wheels: $(find musllinux-repo -name '*.whl' | wc -l)  " | tee -a tobe_README.md
-          echo " --------------------------------------------- "
+          echo " --------------------------------------------- "   | tee -a tobe_README.md
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
