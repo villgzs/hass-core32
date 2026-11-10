@@ -7,7 +7,7 @@
 # Forrás minta: https://github.com/villgzs/hass-core32/blob/main/.github/workflows/builder.yml
 # Hivatalos builder: https://github.com/home-assistant/core/actions/workflows/builder.yml
 
-name: Build (DEV) CORE-32-bit Home Assistant
+name: DEV-ARMV7-BUILD-CORE-IMAGE
 
 on:
   workflow_dispatch:
