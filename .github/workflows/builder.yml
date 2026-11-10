@@ -22,8 +22,8 @@ on:
         type: boolean
         required: false
         default: true
-  # schedule:
-  #  - cron: "0 4 * * *"
+  schedule:
+    - cron: "00 18 * * *"
   # push:
   #   branches:
   #     - main
