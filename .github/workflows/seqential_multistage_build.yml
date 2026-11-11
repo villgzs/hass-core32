@@ -348,7 +348,7 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.ha-do-lat.outputs.do }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
+          VERSION="${{ steps.ha-do-lat.outputs.docker_python }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.WHEELS_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
