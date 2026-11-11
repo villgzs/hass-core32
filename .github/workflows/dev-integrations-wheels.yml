@@ -15,7 +15,7 @@ on:
         required: false
         default: "30"  
   schedule:
-    - cron: "00 22 * * *"      
+    - cron: "57 22 * * *"      
 
 env:
   KIND: combined
