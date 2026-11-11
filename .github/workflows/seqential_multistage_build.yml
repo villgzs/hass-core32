@@ -84,6 +84,8 @@ jobs:
       reqpython_exists: ${{steps.check-python.outputs.reqpython_exists}}
       baseadded_exists: ${{steps.check-hadockerbase.outputs.baseadded_exists}}
       wheeler_exists: ${{steps.check-wheeler.outputs.wheeler_exists}}
+      lat-bp: ${{ steps.ha-ba-lat.outputs.lat-bp }}
+      lat-we: ${{ steps.ha-we-lat.outputs.lat-we }}
     steps:
       - name: Aktuális idő kiírása
         run: |
@@ -97,10 +99,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          LATESTVER="true" 
           if [ -n "${{ inputs.required_base_version }}" ]; then
             echo "Kézzel megadott változat: ${{ inputs.required_base_version }}"
             VERSION="${{ inputs.required_base_version }}"
             DOCKERTAGS="arm32"
+            LATESTVER="false"
           else
             VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
             echo "Legfrissebb változat: $VERSION"
@@ -111,7 +115,8 @@ jobs:
                     
           echo "Home Assistant base version: ${VERSION}"
           echo "basever=${VERSION}" >> $GITHUB_OUTPUT
-          echo "base_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+          echo "base_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT         
+          echo "lat-bp=${LATESTVER}" >> $GITHUB_OUTPUT         
           
           echo "basever=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "base_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
@@ -152,9 +157,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          LATESTVER="true"  
           if [ -n "${{ inputs.required_wheels_version }}" ]; then
             VERSION="${{ inputs.required_wheels_version }}"
             DOCKERTAGS="arm32"
+            LATESTVER="false" 
           else
             VERSION=$(gh api repos/${{env.HA_WHEELS_REPO}}/releases/latest --jq '.tag_name')
             DOCKERTAGS="latest"
@@ -162,7 +169,8 @@ jobs:
           
           echo "Home Assistant version: ${VERSION}"
           echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
-          echo "wheels_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT                    
+          echo "wheels_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT 
+          echo "lat-we=${LATESTVER}" >> $GITHUB_OUTPUT 
           
           echo "wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "wheels_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
@@ -1158,6 +1166,7 @@ jobs:
           tags: |            
             type=sha,prefix=sha-
             type=raw,value=${{needs.prepare.outputs.basever}}-${{needs.prepare.outputs.wheelsver}}
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.lat-bp == 'true' && needs.prepare.outputs.lat-we == 'true' }}
     
       - name: Create manifest list and push
         working-directory: /tmp/digests
