@@ -952,6 +952,7 @@ jobs:
     if: |
       always() &&
       needs.prepare.result == 'success' &&
+      needs.prepare.outputs.wheeler_exists != 'true' &&
       (
         needs.prepare.outputs.python_exists == 'true' ||
         needs.merge-python.result == 'success'
