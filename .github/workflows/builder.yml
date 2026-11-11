@@ -27,17 +27,13 @@ on:
   # push:
   #   branches:
   #     - main
-  
+
 env:
-  
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   EXTRA_TAGS: "latest"
   BASE_IMAGE: "ghcr.io/villgzs/hass-core32-baseadded"
-  BASE_IMAGE_TAG: "2026.06.1-2026.07.0"
-  # Dockerfile: relative to the repository root (/)
-  DOCKERFILE: Dockerfiles/Dockerfile_reds_2026.9.4 
-  HA_CORE_REPO: homeassistant/core
+  HA_CORE_REPO: home-assistant/core
   HA_CORE_REPO_PATH: ha-core
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32-repo
@@ -221,10 +217,10 @@ jobs:
         with:
           repository: home-assistant/core
           ref: ${{ needs.prepare.outputs.version }}
-          path: ${{env.HA_CORE_REPO_PATH}}
+          path: ${{ env.HA_CORE_REPO_PATH }}
 
       - name: Patch dockerfile
-        working-directory: ${{env.HA_CORE_REPO_PATH}}
+        working-directory: ${{ env.HA_CORE_REPO_PATH }}
         run: |
           pwd
           ls -las ./
@@ -311,18 +307,17 @@ jobs:
           # Cél a saját repo translations mappájában
           TARGET_DIR="translations"
           TARGET_FILE="${TARGET_DIR}/translations_${VERSION}.tar.gz"
-      
+
           echo "Saving translations package for version: $VERSION"
-      
+
           if [ ! -f "$SOURCE_FILE" ]; then
             echo "::error::Downloaded package not found: $SOURCE_FILE"
             ls -la ../ha-core/
             exit 1
           fi
-      
+
           mkdir -p "$TARGET_DIR"
           cp "$SOURCE_FILE" "$TARGET_FILE"
-      
           echo "Saved as: $TARGET_FILE"
           ls -lh "$TARGET_FILE"
 
@@ -338,13 +333,13 @@ jobs:
             echo "::error::New translations file not found: $TARGET_FILE"
             exit 1
           fi
-      
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       
           # Csak a friss fájlt adjuk hozzá (a régieket nem)
           git add "$TARGET_FILE"
-      
+
           if git diff --staged --quiet; then
             echo "No changes to commit (file already exists and is identical)."
           else
@@ -353,12 +348,15 @@ jobs:
             echo "Successfully pushed $TARGET_FILE"
           fi
 
-      - name: Extract
+      - name: Extract translations
         working-directory: ha-core
         run: |
-          tar xvf translations.tar.gz
-          echo "translations extracted"
-          # ls -la homeassistant/components/*/translations/ 
+          if [ -f translations.tar.gz ]; then
+            tar xvf translations.tar.gz
+            echo "translations extracted"
+          else
+            echo "::warning::translations.tar.gz not found, continuing without it"
+          fi
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

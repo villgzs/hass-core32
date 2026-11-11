@@ -51,6 +51,8 @@ jobs:
     outputs:
       version: ${{ steps.ha.outputs.version }}
       jobversion: ${{ steps.ha.outputs.jobversion }}
+      pyver: ${{ steps.ha.outputs.pythonversion}}
+      dockver: ${{ steps.ha.outputs.dockerversion }}
       tags: ${{ steps.ha.outputs.tags }}
       armv7image_ready: ${{ steps.check.outputs.armv7image_ready }}
       run_id: ${{ steps.findrunid.outputs.run_id }}
@@ -207,7 +209,7 @@ jobs:
         run: |
           VERSION="${{ steps.ha.outputs.version }}"
           TAG="armv7-${VERSION}"
-          PACKAGE=${{ env.IMAGE_NAME }}
+          PACKAGE=${{env.IMAGE_NAME}}          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
 
@@ -242,12 +244,15 @@ jobs:
 
       - name: Confirm run_id for translations artifact
         id: findrunid
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RUN_ID="${{ steps.ha.outputs.run_id }}"
           if [ -z "$RUN_ID" ]; then
             echo "::error::run_id hiányzik"
             exit 1
           fi
+      
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
           echo "Found run-id: $RUN_ID"
 
@@ -282,6 +287,7 @@ jobs:
         with:
           path: ${{ env.THIS_REPO_PATH }}
           token: ${{ secrets.TRANSLATION_UPLOAD }}
+          # vagy Personal Access Token, ha a GITHUB_TOKEN nem elég
 
       - name: Checkout official Home Assistant core (dev branch, specific SHA)
         uses: actions/checkout@v4
@@ -341,16 +347,18 @@ jobs:
           MATCHING_LINE=$(grep "^${VERSION}" "$GUIDANCE_FILE" || true)
       
           if [ -z "$MATCHING_LINE" ]; then
-            echo "::error::Version ${VERSION} not found in $GUIDANCE_FILE"
+            echo "::warning::Version ${VERSION} not found in $GUIDANCE_FILE"
             echo "Available versions:"
             cat "$GUIDANCE_FILE"
-            exit 1
+            echo 
+            echo "Trying as versions of python ${{ needs.prepare.outputs.pyver }} and docker ${{ needs.prepare.outputs.dockver }}"
+            MATCHING_LINE="${{needs.prepare.outputs.version}}  ${{ needs.prepare.outputs.pyver }}-${{ needs.prepare.outputs.dockver }}"
           fi
       
           # A VERSION után következő szöveg, whitespace nélkül
           EXTRA_TEXT=$(echo "$MATCHING_LINE" | sed -E "s/^${VERSION}[[:space:]]*//" | xargs)
       
-          echo "Found matching line: $MATCHING_LINE"
+          echo "We will use this line: $MATCHING_LINE"
           echo "Text after version:"
           echo "$EXTRA_TEXT"
 
@@ -358,19 +366,23 @@ jobs:
 
       - name: Download translations artifact from official Build images (dev)
         id: transl
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4   # vagy újabb
         with:
           name: translations
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # public repo esetén elég
           repository: home-assistant/core
           run-id: ${{ needs.prepare.outputs.run_id }}
           path: ha-core
 
-      - name: Save translations package into this repository (optional for dev)
+      - name: Save translations package into this repository
         working-directory: ${{ env.THIS_REPO_PATH }}
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
+          
+          # A letöltött csomagolt fájl
           SOURCE_FILE="../ha-core/translations.tar.gz"
+          
+          # Cél a saját repo translations mappájában
           TARGET_DIR="translations"
           TARGET_FILE="${TARGET_DIR}/translations_${VERSION}.tar.gz"
 
@@ -387,7 +399,7 @@ jobs:
           echo "Saved as: $TARGET_FILE"
           ls -lh "$TARGET_FILE"
 
-      - name: Commit and push new translations file (dev)
+      - name: Commit and push new translations file
         working-directory: ${{ env.THIS_REPO_PATH }}
         continue-on-error: true
         run: |
@@ -401,7 +413,8 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
+      
+          # Csak a friss fájlt adjuk hozzá (a régieket nem)
           git add "$TARGET_FILE"
 
           if git diff --staged --quiet; then
