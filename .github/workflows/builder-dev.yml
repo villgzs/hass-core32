@@ -331,7 +331,7 @@ jobs:
         id: guidedversion
         working-directory: ${{ env.THIS_REPO_PATH }}
         run: |
-          VERSION="DEV"
+          VERSION="${{needs.prepare.outputs.version}}"
           GUIDANCE_FILE="guidance/core-versions"
       
           echo "Looking for version: $VERSION"
