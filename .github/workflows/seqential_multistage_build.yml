@@ -53,6 +53,7 @@ env:
   HA_WHEELS_REPO: home-assistant/wheels
   HA_WHEELS_REPO_PATH: ha-wheels-repo
   ALPINE_FILE_PATH: alpine
+  PYTHON_BASE_VER: 3.14
   PYTHON_FILE_PATH: python/3.14
   HABASE_FILE_PATH: 
   WHEELS_FILE_PATH:
@@ -710,6 +711,7 @@ jobs:
           tags: |            
             type=sha,prefix=sha-
             type=raw,value=${{needs.prepare.outputs.basever}}
+            type=raw,value=${{needs.prepare.outputs.basever}}-${{env.PYTHON_BASE_VER}}
             type=raw,value=${{needs.prepare.outputs.base_tags}}
 
       - name: Create manifest list and push
