@@ -174,12 +174,11 @@ jobs:
           fi
 
           # Dockerfile lekérése a home-assistant/docker repóból a VERSION alapján
-          BUILD_YML_CONTENT=$(gh api "repos/home-assistant/docker/contents/Dockerfile?ref=${VERSION}" \
-            --jq '.content' | base64 -d) 
+          BUILD_YML_CONTENT=$(gh api "gh api "repos/home-assistant/wheels/contents/.github/workflows/publish.yml?ref=2026.10.0" --jq '.content' | base64 -d" )
       
           # a base: szöveget tartalmazó sor kinyerése
           BASE_LINE_CONTENT=$(echo "$BUILD_YML_CONTENT" | grep 'base: ' )
-          BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/^[[:space:]]*base:[[:space:]]*//')
+          BUILD_FROM_VERSION=$(echo "$BASE_LINE_CONTENT" | sed 's/^[[:space:]]*base:[[:space:]]*//')
 
           DOCKER_BASE_TAGS=$(gh api --paginate orgs/home-assistant/packages/container/base-python/versions \
             --jq '.[] | select(.metadata.container.tags | index("3.14-alpine3.24")) | .metadata.container.tags[]')
@@ -194,7 +193,7 @@ jobs:
           echo "Should build from:"    >> $GITHUB_STEP_SUMMARY
           echo "${BUILD_FROM_VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "Tags for this verson:"    >> $GITHUB_STEP_SUMMARY
-          echo "${DOCKER_BASE_TAGS}"
+          echo "${DOCKER_BASE_TAGS}"    >> $GITHUB_STEP_SUMMARY
 
       - name: Check if alpine multi manifest image already exists on GHCR
         id: check-alpine
