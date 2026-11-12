@@ -132,6 +132,8 @@ jobs:
           if [ -n "${{ inputs.required_docker_version }}" ]; then
             echo "- Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
             VERSION="${{ inputs.required_docker_version }}"
+            REQPY="${VERSION%%-*}"
+            VERSION="${VERSION##*-}"
             DOCKERTAGS="arm32"
           else
             VERSION=$(gh api repos/${{env.HA_DOCKER_REPO}}/releases/latest --jq '.tag_name')
@@ -150,7 +152,12 @@ jobs:
           echo " - build from: ${BUILD_FROM_VERSION}"
           echo "dockerver=${VERSION}" >> $GITHUB_OUTPUT
           echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
-          echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
+          if [ -z "${REQPY:-}" ]; then
+            echo "docker_python=${BUILD_FROM_VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "docker_python=${REQPY}" >> "$GITHUB_OUTPUT"
+          fi
+          # echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
           
           echo "- dockerver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "- docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
