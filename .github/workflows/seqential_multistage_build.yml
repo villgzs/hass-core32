@@ -100,17 +100,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Get latest stable base version (alpine and python)"  >> $GITHUB_STEP_SUMMARY
           LATESTVER="true" 
           if [ -n "${{ inputs.required_base_version }}" ]; then
+            echo "Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
             echo "Kézzel megadott változat: ${{ inputs.required_base_version }}"
             VERSION="${{ inputs.required_base_version }}"
             DOCKERTAGS="arm32"
             LATESTVER="false"
           else
             VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
-            echo "Legfrissebb változat: $VERSION"
-            # Ezt vesszük alapul a friss helyett:
-            # VERSION="2026.10.2"            
+            echo "Legfrissebb változat: $VERSION"           
             DOCKERTAGS="arm32"
           fi
                     
@@ -127,7 +127,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Get latest stable docker version"  >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ inputs.required_docker_version }}" ]; then
+            echo "Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
             VERSION="${{ inputs.required_docker_version }}"
             DOCKERTAGS="arm32"
           else
@@ -158,6 +160,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Get latest stable wheels version"  >> $GITHUB_STEP_SUMMARY
           LATESTVER="true"  
           if [ -n "${{ inputs.required_wheels_version }}" ]; then
             VERSION="${{ inputs.required_wheels_version }}"
