@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "Get latest stable docker version"  >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ inputs.required_docker_version }}" ]; then
-            echo "- Kézzel megadott változat: ${VERSION" >> $GITHUB_STEP_SUMMARY
+            echo "- Kézzel megadott változat: ${VERSION}" >> $GITHUB_STEP_SUMMARY
             VERSION="${{ inputs.required_docker_version }}"
             REQPY="${VERSION%%-*}"
             VERSION="${VERSION##*-}"
