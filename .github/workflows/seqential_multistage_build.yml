@@ -200,11 +200,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Check if alpine multi manifest image already exists on GHCR"    >> $GITHUB_STEP_SUMMARY
           VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
           TAG="${VERSION}"
           PACKAGE="${{env.ALPINE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
+
+          TARGET_EXISTS="false"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
 
@@ -218,7 +221,7 @@ jobs:
           BODY=$(echo "$RESPONSE" | sed '$d')
 
           if [ "$HTTP_CODE" -eq 404 ]; then
-            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
+            echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk" 
             echo "alpine_exists=false" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -230,21 +233,26 @@ jobs:
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "alpine_exists=true" >> $GITHUB_OUTPUT
+            TARGET_EXISTS="true"
           else
             echo "✗ Az image még nem létezik → build szükséges"
             echo "alpine_exists=false" >> $GITHUB_OUTPUT
-          fi          
+          fi        
+          echo " - alpine exists : $(TARGET_EXISTS)" >> $GITHUB_STEP_SUMMARY
 
       - name: Check if python multi manifest image already exists on GHCR
         id: check-python
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Check if python multi manifest image already exists on GHCR" >> $GITHUB_STEP_SUMMARY
           VERSION="${{ steps.ha-ba-lat.outputs.basever }}"
           TAG="${VERSION}"
           PACKAGE="${{env.PYTHON_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
+
+          TARGET_EXISTS="false"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
 
@@ -275,16 +283,21 @@ jobs:
             echo "python_exists=false" >> $GITHUB_OUTPUT
           fi
 
+          echo " - Target Python already exists : $(TARGET_EXISTS)" >> $GITHUB_STEP_SUMMARY
+
       - name: Check if required python multi manifest image already exists on GHCR
         id: check-reqpython
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Check if required python multi manifest image for BASE-ADDED already exists on GHCR" >> $GITHUB_STEP_SUMMARY
           VERSION="${{ steps.ha-do-lat.outputs.docker_python }}"
           TAG="${VERSION}"
           PACKAGE="${{env.PYTHON_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
+
+          TARGET_EXISTS="false"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
 
@@ -313,22 +326,28 @@ jobs:
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "reqpython_exists=true" >> $GITHUB_OUTPUT
             echo "reqpython_exists=true" >> $GITHUB_STEP_SUMMARY
+            TARGET_EXISTS="true"
           else
             echo "✗ Az image még nem létezik → build szükséges"
             echo "reqpython_exists=false" >> $GITHUB_OUTPUT
             echo "reqpython_exists=false" >> $GITHUB_STEP_SUMMARY
           fi
 
+          echo " - Required Python for build base-added already exists : $(TARGET_EXISTS)" >> $GITHUB_STEP_SUMMARY
+
       - name: Check if ha-docker-base multi manifest image already exists on GHCR
         id: check-hadockerbase
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Check if ha-docker-base multi manifest image already exists on GHCR" >> $GITHUB_STEP_SUMMARY
           VERSION="${{ steps.ha-do-lat.outputs.docker_python }}-${{ steps.ha-do-lat.outputs.dockerver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.HABASE_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
+
+          TARGET_EXISTS="false"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
 
@@ -356,11 +375,14 @@ jobs:
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "baseadded_exists=true" >> $GITHUB_OUTPUT
             echo "baseadded_exists=true" >> $GITHUB_STEP_SUMMARY
+            TARGET_EXISTS=true
           else
             echo "✗ Az image még nem létezik → build szükséges"
             echo "baseadded_exists=false" >> $GITHUB_OUTPUT
             echo "baseadded_exists=false" >> $GITHUB_STEP_SUMMARY
           fi     
+
+          echo " - base-added container already exists : $(TARGET_EXISTS)" >> $GITHUB_STEP_SUMMARY
 
       - name: Check if wheeler multi manifest image already exists on GHCR
         id: check-wheeler
