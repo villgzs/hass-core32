@@ -274,6 +274,7 @@ jobs:
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "python_exists=true" >> $GITHUB_OUTPUT
+            TARGET_EXISTS="true"
           else
             echo "✗ Az image még nem létezik → build szükséges"
             echo "python_exists=false" >> $GITHUB_OUTPUT
