@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "Get latest stable docker version"  >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ inputs.required_docker_version }}" ]; then
-            echo "- Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
+            echo "- Kézzel megadott változat: ${VERSION" >> $GITHUB_STEP_SUMMARY
             VERSION="${{ inputs.required_docker_version }}"
             REQPY="${VERSION%%-*}"
             VERSION="${VERSION##*-}"
@@ -140,24 +140,24 @@ jobs:
             DOCKERTAGS="latest"
           fi
 
-          # Dockerfile lekérése a home-assistant/docker repóból a BASE_IMAGE_VERSION alapján
-          DOCKERFILE_CONTENT=$(gh api "repos/home-assistant/docker/contents/Dockerfile?ref=${BASE_IMAGE_VERSION}" \
+          # Dockerfile lekérése a home-assistant/docker repóból a VERSION alapján
+          DOCKERFILE_CONTENT=$(gh api "repos/home-assistant/docker/contents/Dockerfile?ref=${VERSION}" \
             --jq '.content' | base64 -d)
       
           # ARG BUILD_FROM sor és a végén levő verziószám kinyerése
           BUILD_FROM_LINE=$(echo "$DOCKERFILE_CONTENT" | grep '^ARG BUILD_FROM=' )
-          BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
+          if [ -z "${REQPY:-}" ]; then
+            BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
+          else
+            BUILD_FROM_VERSION=${REQPY}
+          fi
+          # BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
           
           echo "Home Assistant - Docker version: ${VERSION}"
           echo " - build from: ${BUILD_FROM_VERSION}"
           echo "dockerver=${VERSION}" >> $GITHUB_OUTPUT
           echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
-          if [ -z "${REQPY:-}" ]; then
-            echo "docker_python=${BUILD_FROM_VERSION}" >> "$GITHUB_OUTPUT"
-          else
-            echo "docker_python=${REQPY}" >> "$GITHUB_OUTPUT"
-          fi
-          # echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
+          echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
           
           echo "- dockerver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
           echo "- docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
