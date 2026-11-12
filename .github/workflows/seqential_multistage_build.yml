@@ -180,7 +180,15 @@ jobs:
           BUILD_FROM_VERSION=$(echo "$BASE_LINE_CONTENT" | sed 's/^[[:space:]]*base:[[:space:]]*//')
 
           DOCKER_BASE_TAGS=$(gh api --paginate orgs/home-assistant/packages/container/base-python/versions \
-            --jq '.[] | select(.metadata.container.tags | index("3.14-alpine3.24")) | .metadata.container.tags[]')
+            --jq '.[] | select(.metadata.container.tags | index(${BUILD_FROM_VERSION})) | .metadata.container.tags[]')
+
+          # Ellenőrzés: szerepel-e a "latest" a tagek között
+          if ! echo "$DOCKER_BASE_TAGS" | grep -qx "latest"; then
+            echo "::error::A 'latest' tag nem található a base-python package tagei között a ${BUILD_FROM_VERSION} verziónál!"
+            echo "Elérhető tagek:"
+            echo "$DOCKER_BASE_TAGS"
+            exit 1
+          fi
                     
           echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
           echo "wheels_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT 
