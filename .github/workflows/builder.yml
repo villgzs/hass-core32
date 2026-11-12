@@ -48,6 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ha.outputs.version }}
+      newversion: ${{ steps.ha.outputs.version }}
       pyver: ${{ steps.ha.outputs.pythonversion}}
       dockver: ${{ steps.ha.outputs.dockerversion }}
       tags: ${{ steps.ha.outputs.tags }}
@@ -74,7 +75,11 @@ jobs:
             DOCKERTAGS="beta"
           else
             VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
+            VERSION=$(gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | head -n 1)
             DOCKERTAGS="${{ env.EXTRA_TAGS }}"
+            if [[ "$VERSION" == *b* ]]; then
+              DOCKERTAGS="beta"
+            fi
           fi
       
           # BASE_IMAGE_VERSION lekérése a core builder.yml-ből az adott VERSION tag-ről
