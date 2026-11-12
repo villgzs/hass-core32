@@ -173,14 +173,14 @@ jobs:
           fi
 
           # Dockerfile lekérése a home-assistant/docker repóból a VERSION alapján
-          BUILD_YML_CONTENT=$(gh api "repos/home-assistant/wheels/contents/.github/workflows/publish.yml?ref=2026.10.0" --jq '.content' | base64 -d )
+          BUILD_YML_CONTENT=$(gh api "repos/home-assistant/wheels/contents/.github/workflows/publish.yml?ref=$VERSION" --jq '.content' | base64 -d )
       
           # a base: szöveget tartalmazó sor kinyerése
           BASE_LINE_CONTENT=$(echo "$BUILD_YML_CONTENT" | grep 'base: ' )
           BUILD_FROM_VERSION=$(echo "$BASE_LINE_CONTENT" | sed 's/^[[:space:]]*base:[[:space:]]*//')
 
           DOCKER_BASE_TAGS=$(gh api --paginate orgs/home-assistant/packages/container/base-python/versions \
-            --jq '.[] | select(.metadata.container.tags | index(${BUILD_FROM_VERSION})) | .metadata.container.tags[]')
+            --jq '.[] | select(.metadata.container.tags | index($BUILD_FROM_VERSION)) | .metadata.container.tags[]')
 
           # Ellenőrzés: szerepel-e a "latest" a tagek között
           if ! echo "$DOCKER_BASE_TAGS" | grep -qx "latest"; then
