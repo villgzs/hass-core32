@@ -389,11 +389,14 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Check if wheeler multi manifest image already exists on GHCR" >> $GITHUB_STEP_SUMMARY
           VERSION="${{ steps.ha-do-lat.outputs.docker_python }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.WHEELS_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
+
+          TARGET_EXISTS="false"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
 
@@ -419,10 +422,13 @@ jobs:
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "wheeler_exists=true" >> $GITHUB_OUTPUT
+            TARGET_EXISTS="true"
           else
             echo "✗ Az image még nem létezik → build szükséges"
             echo "wheeler_exists=false" >> $GITHUB_OUTPUT
-          fi               
+          fi         
+
+          echo " - wheeler container already exists : $(TARGET_EXISTS)" >> $GITHUB_STEP_SUMMARY
           
   build-alpine:
     name: Build alpine - base-alpine ${{ matrix.architecture }}
