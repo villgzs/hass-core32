@@ -103,7 +103,7 @@ jobs:
           echo "Get latest stable base version (alpine and python)"  >> $GITHUB_STEP_SUMMARY
           LATESTVER="true" 
           if [ -n "${{ inputs.required_base_version }}" ]; then
-            echo "Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
+            echo "- Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
             echo "Kézzel megadott változat: ${{ inputs.required_base_version }}"
             VERSION="${{ inputs.required_base_version }}"
             DOCKERTAGS="arm32"
@@ -111,7 +111,7 @@ jobs:
           else
             VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
             echo "Legfrissebb stabil változat: $VERSION"           
-            echo "Legfrissebb stabil változat: $VERSION" >> $GITHUB_STEP_SUMMARY
+            echo "- Legfrissebb stabil változat: $VERSION" >> $GITHUB_STEP_SUMMARY
             DOCKERTAGS="arm32"
           fi
                     
@@ -120,8 +120,8 @@ jobs:
           echo "base_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT         
           echo "lat-bp=${LATESTVER}" >> $GITHUB_OUTPUT         
           
-          echo "basever=${VERSION}"   >> $GITHUB_STEP_SUMMARY
-          echo "base_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+          echo "- basever=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "- base_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
 
       - name: Get latest stable docker version
         id: ha-do-lat
@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "Get latest stable docker version"  >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ inputs.required_docker_version }}" ]; then
-            echo "Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
+            echo "- Kézzel megadott változat." >> $GITHUB_STEP_SUMMARY
             VERSION="${{ inputs.required_docker_version }}"
             DOCKERTAGS="arm32"
           else
@@ -152,10 +152,9 @@ jobs:
           echo "docker_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
           echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
           
-          echo "dockerver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
-          echo "docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
-          echo "Required basever python for build it: " >> $GITHUB_STEP_SUMMARY
-          echo "docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- dockerver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "- docker_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+          echo "- Required basever python for build it: docker_python=${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY
 
       - name: Get latest stable wheels version
         id: ha-we-lat
@@ -182,18 +181,15 @@ jobs:
 
           DOCKER_BASE_TAGS=$(gh api --paginate orgs/home-assistant/packages/container/base-python/versions \
             --jq '.[] | select(.metadata.container.tags | index("3.14-alpine3.24")) | .metadata.container.tags[]')
-          
-          echo "Home Assistant version: ${VERSION}"
+                    
           echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
           echo "wheels_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT 
           echo "lat-we=${LATESTVER}" >> $GITHUB_OUTPUT 
           
-          echo "wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
-          echo "wheels_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
-          echo "Should build from:"    >> $GITHUB_STEP_SUMMARY
-          echo "${BUILD_FROM_VERSION}"   >> $GITHUB_STEP_SUMMARY
-          echo "Tags for this verson:"    >> $GITHUB_STEP_SUMMARY
-          echo "${DOCKER_BASE_TAGS}"    >> $GITHUB_STEP_SUMMARY
+          echo "- wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "- wheels_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY 
+          echo "- Should build from: ${BUILD_FROM_VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "- Tags for this verson: ${DOCKER_BASE_TAGS}"    >> $GITHUB_STEP_SUMMARY
 
       - name: Check if alpine multi manifest image already exists on GHCR
         id: check-alpine
@@ -297,6 +293,7 @@ jobs:
           PACKAGE="${PACKAGE#*/}"
           OWNER="${{ github.repository_owner }}"
 
+          echo "- Reqired python version: $VERSION" >> $GITHUB_STEP_SUMMARY
           TARGET_EXISTS="false"
 
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
@@ -313,19 +310,18 @@ jobs:
           if [ "$HTTP_CODE" -eq 404 ]; then
             echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
             echo "reqpython_exists=false" >> $GITHUB_OUTPUT
-            echo "reqpython_exists=false" >> $GITHUB_STEP_SUMMARY
+            echo "- reqpython_exists=false" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
           EXISTS=$(echo "$BODY" | jq -r --arg tag "$TAG" '
             [.[] | select(.metadata.container.tags[]? == $tag)] | length
           ')
-
-          echo "Reqired python version: $VERSION" >> $GITHUB_STEP_SUMMARY
+          
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "reqpython_exists=true" >> $GITHUB_OUTPUT
-            echo "reqpython_exists=true" >> $GITHUB_STEP_SUMMARY
+            echo "- reqpython_exists=true" >> $GITHUB_STEP_SUMMARY
             TARGET_EXISTS="true"
           else
             echo "✗ Az image még nem létezik → build szükséges"
@@ -363,7 +359,7 @@ jobs:
           if [ "$HTTP_CODE" -eq 404 ]; then
             echo "API hiba (HTTP $HTTP_CODE) → feltételezzük, hogy nincs image, buildelünk"
             echo "baseadded_exists=false" >> $GITHUB_OUTPUT
-            echo "baseadded_exists=false" >> $GITHUB_STEP_SUMMARY
+            echo "- baseadded_exists=false" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
@@ -374,12 +370,12 @@ jobs:
           if [ "$EXISTS" -gt 0 ]; then
             echo "✓ Az image már létezik → kihagyjuk a buildet"
             echo "baseadded_exists=true" >> $GITHUB_OUTPUT
-            echo "baseadded_exists=true" >> $GITHUB_STEP_SUMMARY
+            echo "- baseadded_exists=true" >> $GITHUB_STEP_SUMMARY
             TARGET_EXISTS=true
           else
             echo "✗ Az image még nem létezik → build szükséges"
             echo "baseadded_exists=false" >> $GITHUB_OUTPUT
-            echo "baseadded_exists=false" >> $GITHUB_STEP_SUMMARY
+            echo "- baseadded_exists=false" >> $GITHUB_STEP_SUMMARY
           fi     
 
           echo " - base-added container already exists : ${TARGET_EXISTS}" >> $GITHUB_STEP_SUMMARY
