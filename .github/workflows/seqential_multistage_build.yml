@@ -363,6 +363,8 @@ jobs:
 
           TARGET_EXISTS="false"
 
+          echo " - ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          
           echo "Ellenőrzés: ghcr.io/${OWNER}/${PACKAGE}:${TAG}"
 
           RESPONSE=$(curl -s -w "\n%{http_code}" \
