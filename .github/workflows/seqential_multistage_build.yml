@@ -189,6 +189,8 @@ jobs:
             echo "$DOCKER_BASE_TAGS"
             exit 1
           fi
+
+          echo "OK: 'latest' tag megtalálható."
                     
           echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
           echo "wheels_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT 
