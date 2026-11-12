@@ -21,7 +21,7 @@ env:
   KIND: combined
   ARCH: armv7
   # A te 32 bites builder image-ed
-  BUILDER_IMAGE: ghcr.io/villgzs/hass-core32-wheeler:2026.10.3-2026.10.0
+  BUILDER_IMAGE: ghcr.io/villgzs/hass-core32-wheeler:2026.11.0-2026.10.0
   PLATFORM: linux/arm/v7
   # LISTMAX: 30
   LISTMAX: ${{inputs.maxlines}}
