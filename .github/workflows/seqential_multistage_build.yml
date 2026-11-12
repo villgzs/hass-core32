@@ -174,7 +174,7 @@ jobs:
           fi
 
           # Dockerfile lekérése a home-assistant/docker repóból a VERSION alapján
-          BUILD_YML_CONTENT=$(gh api "gh api "repos/home-assistant/wheels/contents/.github/workflows/publish.yml?ref=2026.10.0" --jq '.content' | base64 -d" )
+          BUILD_YML_CONTENT=$(gh api "repos/home-assistant/wheels/contents/.github/workflows/publish.yml?ref=2026.10.0" --jq '.content' | base64 -d )
       
           # a base: szöveget tartalmazó sor kinyerése
           BASE_LINE_CONTENT=$(echo "$BUILD_YML_CONTENT" | grep 'base: ' )
