@@ -180,8 +180,7 @@ jobs:
           BUILD_FROM_VERSION=$(echo "$BASE_LINE_CONTENT" | sed 's/^[[:space:]]*base:[[:space:]]*//')
 
           DOCKER_BASE_TAGS=$(gh api --paginate orgs/home-assistant/packages/container/base-python/versions \
-            --arg BUILD_FROM_VERSION "$BUILD_FROM_VERSION" \
-            --jq '.[] | select(.metadata.container.tags | index($BUILD_FROM_VERSION)) | .metadata.container.tags[]')
+            --jq '.[] | select(.metadata.container.tags | index("'"$BUILD_FROM_VERSION"'")) | .metadata.container.tags[]')
 
           # Ellenőrzés: szerepel-e a "latest" a tagek között
           if ! echo "$DOCKER_BASE_TAGS" | grep -qx "latest"; then
