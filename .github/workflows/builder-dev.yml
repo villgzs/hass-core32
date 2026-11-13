@@ -199,8 +199,8 @@ jobs:
           # SUMMARY
           echo "Home Assistant Core: ${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "tags=${DOCKERTAGS}" >> $GITHUB_STEP_SUMMARY
-          echo "BASE_IMAGE_VERSION used for core build:    ${BASE_IMAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "BASE_IMAGE built from this python version: ${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY 
+          echo "BASE_IMAGE_VERSION (docker) used for core build:           ${BASE_IMAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "Python version (docker-base) used for building BASE_IMAGE: ${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY 
 
       - name: Check if armv7-dev image already exists on GHCR
         id: check
