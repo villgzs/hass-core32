@@ -366,7 +366,7 @@ jobs:
 
           # --------------------------------------------------
           echo "env.PLATFORM ${{ env.PLATFORM }}"
-          echo "env.BUILDER_IMAGE ${{ env.BUILDER_IMAGE }}"
+          echo "ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }}"
           echo "steps.req.outputs.file ${{ steps.req.outputs.file }}"
           echo "env.SKIP_BINARY ${{ env.SKIP_BINARY }}" 
           echo "env.APK ${{ env.APK }}"
@@ -389,7 +389,7 @@ jobs:
             --workdir /data \
             --env-file .env_file \
             -v ./pip-build-constraints.txt:/pip-build-constraints.txt:ro \
-            ${{ env.BUILDER_IMAGE }} \
+            ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }} \
             --index "https://villgzs.github.io" \
             --upload rsync \
             --remote "/data/output" \
