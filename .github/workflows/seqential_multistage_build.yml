@@ -38,7 +38,7 @@ on:
         default: true
         
   schedule:
-   - cron: '11 7,19 * * *'
+   - cron: '11 3,11,19 * * *'
    
 env:
   REGISTRY: ghcr.io
