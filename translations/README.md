@@ -1,1 +1,1 @@
-Places for translations files
+[Places for translations files](https://github.com/villgzs/ha-translations)
