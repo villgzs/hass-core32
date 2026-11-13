@@ -456,7 +456,7 @@ jobs:
         working-directory: ha-core
         run: |
           if [ -f translations.tar.gz ]; then
-            tar xvf translations.tar.gz
+            tar xvf translations.tar.gz > /dev/null
             echo "translations extracted"
           else
             echo "::warning::translations.tar.gz not found, continuing without it"
