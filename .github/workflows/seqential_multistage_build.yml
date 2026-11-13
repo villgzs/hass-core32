@@ -406,7 +406,7 @@ jobs:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Check if wheeler multi manifest image already exists on GHCR" >> $GITHUB_STEP_SUMMARY
-          VERSION="${{ steps.ha-do-lat.outputs.basever }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
+          VERSION="${{ steps.ha-ba-lat.outputs.basever }}-${{ steps.ha-we-lat.outputs.wheelsver }}"
           TAG="${VERSION}"
           PACKAGE="${{env.WHEELS_IMAGE_NAME}}"          # a ghcr.io/villgzs/hass-core32 package neve
           PACKAGE="${PACKAGE#*/}"
