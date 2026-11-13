@@ -347,7 +347,7 @@ jobs:
                     
           # 1. Megpróbáljuk klónozni az adott ágat (ha már létezik)
           # Ha nem létezik az ág, a klónozás hibára futna, ezért először csak alapból klónozunk `--depth 1`-gyel
-          git clone --depth 1 https://x-access-token:${TRANSLATE_REPO_TOKEN}@${TRANSLATE_REPO} "$TEMP_DIR"
+          git clone https://x-access-token:${TRANSLATE_REPO_TOKEN}@${TRANSLATE_REPO} "$TEMP_DIR"
         
           # Navigálás az ideiglenes mappába
           cd "$TEMP_DIR"
