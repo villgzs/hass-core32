@@ -20,8 +20,6 @@ on:
 env:
   KIND: combined
   ARCH: armv7
-  # A te 32 bites builder image-ed
-  BUILDER_IMAGE: ghcr.io/villgzs/hass-core32-wheeler:2026.11.0-2026.10.0
   PLATFORM: linux/arm/v7
   # LISTMAX: 30
   LISTMAX: ${{inputs.maxlines}}
@@ -35,6 +33,7 @@ env:
   HA_WHEELS_REPO_PATH: ha-wheels
   THIS_REPO: villgzs/hass-core32
   THIS_REPO_PATH: hass-core32
+  HA_ALPINE_REPO: home-assistant/docker-base
 
 permissions:
   contents: read
@@ -44,12 +43,65 @@ permissions:
 jobs:
   call-time-workflow:  
     uses: villgzs/villgzs/.github/workflows/get-time.yml@main   # ← helyi reusable workflow
+
+  prepare:
+    name: Prepare source
+    runs-on: ubuntu-latest
+    outputs:
+      basever: ${{ steps.ha-ba-lat.outputs.basever }}
+      wheelsver: ${{ steps.ha-we-lat.outputs.wheelsver }}      
+
+    steps:
+      - name: Aktuális idő kiírása
+        run: |
+          CURRENT_TIME=$(date)
+          echo "Aktuális UTC idő: $CURRENT_TIME"
+          echo "### Futás Összegzés" >> $GITHUB_STEP_SUMMARY
+          echo "- **Aktuális UTC idő:** $CURRENT_TIME" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Get latest stable base version
+        id: ha-ba-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Get latest stable base version (alpine and python)"  >> $GITHUB_STEP_SUMMARY
+          LATESTVER="true" 
+          
+          VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
+          echo "Legfrissebb stabil változat: $VERSION"           
+          echo "- Legfrissebb stabil változat: $VERSION" >> $GITHUB_STEP_SUMMARY
+                              
+          echo "Home Assistant base version: ${VERSION}"
+          echo "basever=${VERSION}" >> $GITHUB_OUTPUT
+          echo "base_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT         
+          echo "lat-bp=${LATESTVER}" >> $GITHUB_OUTPUT         
+          
+          echo "- basever=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "- base_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY       
+
+      - name: Get latest stable wheels version
+        id: ha-we-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Get latest stable wheels version"  >> $GITHUB_STEP_SUMMARY
+          LATESTVER="true"  
+          
+          VERSION=$(gh api repos/${{env.HA_WHEELS_REPO}}/releases/latest --jq '.tag_name')          
+
+          echo "OK: 'latest' tag megtalálható."
+                    
+          echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
+                    
+          echo "- wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY          
+    
   # --------------------------------------------------
   # 1) Core verzió + requirements előkészítés
   # --------------------------------------------------
   inbupu:
     name: Initialize, Build, Publish (Core version + requirements)
     runs-on: ubuntu-latest
+    needs: prepare
     outputs:
       version: ${{ steps.version.outputs.version }}
       sha: ${{ steps.version.outputs.sha }}
@@ -300,7 +352,7 @@ jobs:
 
       - name: Pull 32-bit builder image
         run: |
-          docker pull --platform ${{ env.PLATFORM }} ${{ env.BUILDER_IMAGE }}
+          docker pull --platform ${{ env.PLATFORM }} ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }}
 
       - name: Select requirements file
         id: req
@@ -339,7 +391,7 @@ jobs:
 
           # --------------------------------------------------
           echo "env.PLATFORM ${{ env.PLATFORM }}"
-          echo "env.BUILDER_IMAGE ${{ env.BUILDER_IMAGE }}"
+          echo "ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }}"
           echo "steps.req.outputs.file ${{ steps.req.outputs.file }}"
           echo "env.SKIP_BINARY ${{ env.SKIP_BINARY }}" 
           echo "env.APK ${{ env.APK }}"
@@ -362,7 +414,7 @@ jobs:
             --workdir /data \
             --env-file .env_file \
             -v ./pip-build-constraints.txt:/pip-build-constraints.txt:ro \
-            ${{ env.BUILDER_IMAGE }} \
+            ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }} \
             --index "https://villgzs.github.io" \
             --upload rsync \
             --remote "/data/output" \

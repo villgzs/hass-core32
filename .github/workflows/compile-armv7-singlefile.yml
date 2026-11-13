@@ -42,6 +42,13 @@ env:
   APK: "cargo;postgresql-dev;libffi-dev;openssl-dev;yaml-dev;nasm;zlib-ng-dev;zlib-dev;jpeg-dev;freetype-dev;lcms2-dev;openjpeg-dev;tiff-dev;re2-dev;bluez-dev;glib-dev;eudev-dev;libxml2-dev;libxslt-dev;libpng-dev;libjpeg-turbo-dev;gmp-dev;mpfr-dev;mpc1-dev;ffmpeg-dev;openblas-dev;fftw-dev;lapack-dev;gfortran;blas-dev;eigen-dev;glew-dev;harfbuzz-dev;hdf5-dev;libdc1394-dev;libtbb-dev;mesa-dev;openexr-dev;uchardet-dev;geos;geos-dev"
   SKIP_BINARY: "aiohttp;av;grpcio;multidict;propcache;yarl;SQLAlchemy;charset-normalizer;protobuf;pymicro-vad"
   OUTDIR: wheels-out
+  HA_CORE_REPO: home-assistant/core
+  HA_CORE_REPO_PATH: ha-core
+  HA_WHEELS_REPO: home-assistant/wheels
+  HA_WHEELS_REPO_PATH: ha-wheels
+  THIS_REPO: villgzs/hass-core32
+  THIS_REPO_PATH: hass-core32
+  HA_ALPINE_REPO: home-assistant/docker-base
 
 permissions:
   contents: read
@@ -51,12 +58,65 @@ permissions:
 jobs:
   call-time-workflow:  
     uses: villgzs/villgzs/.github/workflows/get-time.yml@main   # ← helyi reusable workflow
+
+  prepare:
+    name: Prepare source
+    runs-on: ubuntu-latest
+    outputs:
+      basever: ${{ steps.ha-ba-lat.outputs.basever }}
+      wheelsver: ${{ steps.ha-we-lat.outputs.wheelsver }}      
+
+    steps:
+      - name: Aktuális idő kiírása
+        run: |
+          CURRENT_TIME=$(date)
+          echo "Aktuális UTC idő: $CURRENT_TIME"
+          echo "### Futás Összegzés" >> $GITHUB_STEP_SUMMARY
+          echo "- **Aktuális UTC idő:** $CURRENT_TIME" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Get latest stable base version
+        id: ha-ba-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Get latest stable base version (alpine and python)"  >> $GITHUB_STEP_SUMMARY
+          LATESTVER="true" 
+          
+          VERSION=$(gh api repos/${{env.HA_ALPINE_REPO}}/releases/latest --jq '.tag_name')
+          echo "Legfrissebb stabil változat: $VERSION"           
+          echo "- Legfrissebb stabil változat: $VERSION" >> $GITHUB_STEP_SUMMARY
+                              
+          echo "Home Assistant base version: ${VERSION}"
+          echo "basever=${VERSION}" >> $GITHUB_OUTPUT
+          echo "base_tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT         
+          echo "lat-bp=${LATESTVER}" >> $GITHUB_OUTPUT         
+          
+          echo "- basever=${VERSION}"   >> $GITHUB_STEP_SUMMARY
+          echo "- base_tags=${DOCKERTAGS}"   >> $GITHUB_STEP_SUMMARY       
+
+      - name: Get latest stable wheels version
+        id: ha-we-lat
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Get latest stable wheels version"  >> $GITHUB_STEP_SUMMARY
+          LATESTVER="true"  
+          
+          VERSION=$(gh api repos/${{env.HA_WHEELS_REPO}}/releases/latest --jq '.tag_name')          
+
+          echo "OK: 'latest' tag megtalálható."
+                    
+          echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
+                    
+          echo "- wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY          
+    
   # --------------------------------------------------
   # 1) Core verzió + requirements előkészítés
   # --------------------------------------------------
   inbupu:
     name: Initialize, Build, Publish (Core version + requirements)
     runs-on: ubuntu-latest
+    needs: prepare
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -308,15 +368,9 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set builder image and platform
-        id: builder
-        run: |
-          echo "${{env.BUILDER_IMAGE}}" >> $GITHUB_OUTPUT
-          echo "platform=linux/arm/v7" >> $GITHUB_OUTPUT
-          
       - name: Pull 32-bit builder image
         run: |
-          docker pull --platform ${{ steps.builder.outputs.platform }} ${{ steps.builder.outputs.image }}
+          docker pull --platform ${{ env.PLATFORM }} ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }}
 
       - name: Select requirements file
         id: req
@@ -351,7 +405,7 @@ jobs:
 
           # --------------------------------------------------
           echo "steps.builder.outputs.platform ${{ steps.builder.outputs.platform }}"
-          echo "steps.builder.outputs.image ${{ steps.builder.outputs.image }}"
+          echo "ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }}"
           echo "steps.req.outputs.file ${{ steps.req.outputs.file }}"
           echo "env.SKIP_BINARY ${{ env.SKIP_BINARY }}" 
           echo "env.APK ${{ env.APK }}"
@@ -383,7 +437,7 @@ jobs:
             --workdir /data \
             --env-file .env_file \
             -v ./pip-build-constraints.txt:/pip-build-constraints.txt:ro \
-            ${{ steps.builder.outputs.image }} \
+            ghcr.io/villgzs/hass-core32-wheeler:${{ needs.prepare.outputs.basever }}-${{ needs.prepare.outputs.wheelsver }} \
             --index "https://villgzs.github.io" \
             --upload rsync \
             --remote "/data/output" \
