@@ -326,32 +326,59 @@ jobs:
           echo "Saved as: $TARGET_FILE"
           ls -lh "$TARGET_FILE"
 
-      - name: Commit and push new translations file
+
+      - name: Commit and push new translations file to target repo (braches)
         working-directory: ${{ env.THIS_REPO_PATH }}
+        env:
+          TRANSLATE_REPO_TOKEN: ${{ secrets.TRANSLATE_REPO_TOKEN }}
+          TRANSLATE_REPO: "github.com/villgzs/ha-translations.git"
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           TARGET_FILE="translations/translations_${VERSION}.tar.gz"
-      
-          echo "Checking for new translations file: $TARGET_FILE"
-      
+          BRANCH_NAME="${VERSION}" # Vagy egyszerűen csak ${VERSION}, ahogy szeretnéd
+        
           if [ ! -f "$TARGET_FILE" ]; then
-            echo "::error::New translations file not found: $TARGET_FILE"
-            exit 1
+            echo "No new translations file to commit."
+            exit 0
           fi
-
+        
+          # Ideiglenes mappa létrehozása a cél repó számára
+          TEMP_DIR=$(mktemp -d)
+                    
+          # 1. Megpróbáljuk klónozni az adott ágat (ha már létezik)
+          # Ha nem létezik az ág, a klónozás hibára futna, ezért először csak alapból klónozunk `--depth 1`-gyel
+          git clone --depth 1 https://x-access-token:${TRANSLATE_REPO_TOKEN}@${TRANSLATE_REPO} "$TEMP_DIR"
+        
+          # Navigálás az ideiglenes mappába
+          cd "$TEMP_DIR"
+          
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      
-          # Csak a friss fájlt adjuk hozzá (a régieket nem)
+  
+          # 2. Megnézzük, hogy létezik-e már a távoli repóban a kívánt ág
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
+            echo "Branch $BRANCH_NAME already exists. Checking it out..."
+            git fetch origin "$BRANCH_NAME"
+            git checkout "$BRANCH_NAME"
+          else
+            echo "Branch $BRANCH_NAME does not exist. Creating a new branch..."
+            git checkout -b "$BRANCH_NAME"
+          fi
+        
+          # Fájl másolása a cél repó megfelelő mappájába
+          mkdir -p "translations"
+          cp "$OLDPWD/$TARGET_FILE" "$TARGET_FILE"
+        
           git add "$TARGET_FILE"
-
+        
           if git diff --staged --quiet; then
             echo "No changes to commit (file already exists and is identical)."
           else
             git commit -m "Add translations for ${VERSION}"
-            git push
-            echo "Successfully pushed $TARGET_FILE"
-          fi
+            # Feltöltés az adott VERSION szerinti ágba
+            git push origin "$BRANCH_NAME"
+            echo "Successfully pushed $TARGET_FILE to branch $BRANCH_NAME."
+          fi      
 
       - name: Extract translations
         working-directory: ha-core
