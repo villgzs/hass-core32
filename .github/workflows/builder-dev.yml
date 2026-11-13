@@ -399,32 +399,6 @@ jobs:
           echo "Saved as: $TARGET_FILE"
           ls -lh "$TARGET_FILE"
 
-      - name: Commit and push new translations file
-        working-directory: ${{ env.THIS_REPO_PATH }}
-        continue-on-error: true
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          TARGET_FILE="translations/translations_${VERSION}.tar.gz"
-
-          if [ ! -f "$TARGET_FILE" ]; then
-            echo "No new translations file to commit."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      
-          # Csak a friss fájlt adjuk hozzá (a régieket nem)
-          git add "$TARGET_FILE"
-
-          if git diff --staged --quiet; then
-            echo "No changes to commit (file already exists and is identical)."
-          else
-            git commit -m "Add translations for ${VERSION} (dev)"
-            git push
-            echo "Successfully pushed $TARGET_FILE"
-          fi
-
       - name: Commit and push new translations file to target repo (braches)
         working-directory: ${{ env.THIS_REPO_PATH }}
         env:
