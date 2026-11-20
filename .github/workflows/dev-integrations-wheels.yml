@@ -574,8 +574,15 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           cd musllinux-repo
+          mkdir -p wheels32bit
+          cd wheels32bit
 
-          cp ../tobe_README.md ./README.md
+          cp ../../tobe_README.md ./README.md
+          cp ../../tobe_README.md ./README.dev-integrations.md
+          
+          cat README.dev-core.md >> README.md || true
+          cat README.core.md >> README.md || true
+          cat README.integrations.md >> README.md || true          
 
           # Csak a 100 MiB-nél kisebb fájlokat adjuk hozzá
           # find musllinux -type f -size -100M -print0 | xargs -0 git add
@@ -595,37 +602,9 @@ jobs:
             git push -u origin main --force
           fi
 
-          cd ..
-
           # -------------------------------------
           # musllinux done
           # -------------------------------------
-
-          cd ${{ env.THIS_REPO_PATH }} 
-
-          git pull
-          
-          cd wheels32bit
-
-          cp ../../tobe_README.md ./README.md
-          cp ../../tobe_README.md ./README.dev-integrations.md
-          
-          cat README.dev-core.md >> README.md || true
-          cat README.core.md >> README.md || true
-          cat README.integrations.md >> README.md || true          
-
-          cat README.txt.md >> README.md
-          
-          git add README.md README.dev-integrations.md
-            
-          if git diff --staged --quiet; then
-            echo "Nincs változás, nem commitolok."
-          else
-            git commit -m "Update README and wheels for HA ${{ steps.version.outputs.version }} (armv7)"
-            git push origin main
-          fi
-
-          cd ../..
 
   wait-job:
     name: Wait for update-index to finish
