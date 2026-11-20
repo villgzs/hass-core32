@@ -1,6 +1,10 @@
 name: ARMV7-CORE-WHEELS
 
 on:
+  push:
+    branches:
+      - trigger-latest
+      
   workflow_dispatch:
     inputs:
       core_version:
@@ -552,7 +556,16 @@ jobs:
 
           cd musllinux-repo
 
-          cp ../tobe_README.md ./README.md
+          mkdir -p wheels32bit
+          cd wheels32bit          
+
+          cp ../../tobe_README.md ./README.md          
+
+          cat README.dev-core.md >> README.md || true
+          cat README.dev-integrations.md >> README.md || true
+          cat README.integrations.md >> README.md || true          
+
+          cd ..
 
           # Csak a 100 MiB-nél kisebb fájlokat adjuk hozzá
           # find musllinux -type f -size -100M -print0 | xargs -0 git add
@@ -577,29 +590,3 @@ jobs:
           # -------------------------------------
           # musllinux done
           # -------------------------------------
-
-          cd ${{ env.THIS_REPO_PATH }} 
-
-          git pull
-          
-          cd wheels32bit
-
-          cp ../../tobe_README.md ./README.md
-          cp ../../tobe_README.md ./README.core.md
-          
-          cat README.dev-core.md >> README.md || true
-          cat README.dev-integrations.md >> README.md || true
-          cat README.integrations.md >> README.md || true          
-
-          cat README.txt.md >> README.md
-          
-          git add README.md README.core.md
-            
-          if git diff --staged --quiet; then
-            echo "Nincs változás, nem commitolok."
-          else
-            git commit -m "Update README and wheels for HA ${{ steps.version.outputs.version }} (armv7)"
-            git push origin main
-          fi
-
-          cd ../..
