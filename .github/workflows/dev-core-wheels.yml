@@ -1,6 +1,10 @@
 name: DEV-ARMV7-CORE-WHEELS
 
 on:
+  push:
+    branches:
+      - trigger
+      
   workflow_dispatch:
     inputs:
       
