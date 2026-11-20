@@ -23,6 +23,10 @@ on:
         default: "30"  
   schedule:
     - cron: "00 17 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true     
       
 env:
   KIND: combined
