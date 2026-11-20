@@ -1,0 +1,170 @@
+# docker buildx build \
+#   --platform linux/arm/v7 \
+#   -t ha-python-rust:1.99.1 \
+#   --load .
+#
+# -----------------------------
+# docker buildx build \
+#   --platform linux/arm/v7 \
+#   -t ha-python-rust:1.99.1 \
+#   --cache-to type=local,dest=/tmp/buildx-cache \
+#   --cache-from type=local,src=/tmp/buildx-cache \
+#   --load .
+#
+
+ARG BASE=ghcr.io/villgzs/hass-core32-basepython:2026.10.0
+
+# ============================================================
+# 0. közös alap
+# ============================================================
+FROM ${BASE} AS base
+
+# Globális környezeti változó a Cargo / x.py logolásának csendesítésére
+ENV CARGO_TERM_QUIET=true
+
+RUN apk add --no-cache \
+    curl \
+    build-base \
+    musl-dev \
+    openssl-dev \
+    linux-headers \
+    pkgconf \
+    cmake \
+    python3 \
+    git \
+    ninja \
+    patch \
+    xz \
+    tar
+
+# ============================================================
+# 1. lépés: Alpine 1.96 → Rust 1.97
+# ============================================================
+FROM base AS rust-1.97
+
+RUN apk add --no-cache rust cargo
+
+WORKDIR /tmp
+RUN set -eux; \
+    curl -LO https://static.rust-lang.org/dist/rustc-1.97.0-src.tar.gz; \
+    tar xf rustc-1.97.0-src.tar.gz; \
+    cd rustc-1.97.0-src; \
+    \
+    printf '%s\n' \
+        '[build]' \
+        'docs = false' \
+        'compiler-docs = false' \
+        'extended = true' \
+        'tools = ["cargo"]' \
+        'jobs = 8' \
+        'rustc = "/usr/bin/rustc"' \
+        'cargo = "/usr/bin/cargo"' \
+        '' \
+        '[rust]' \
+        'codegen-units = 1' \
+        'lto = "off"' \
+        'debug = false' \
+        'debuginfo-level = 0' \
+        > config.toml; \
+    \
+    ./x.py build --stage 2; \
+    ./x.py install --prefix=/opt/rust-1.97; \
+    \
+    /opt/rust-1.97/bin/rustc --version; \
+    \
+    # Forrás törlése, csak a toolchain marad
+    cd /; \
+    rm -rf /tmp/rustc-1.97.0-src /tmp/rustc-1.97.0-src.tar.gz
+
+# ============================================================
+# 2. lépés: 1.97 → 1.98
+# ============================================================
+FROM base AS rust-1.98
+
+# Átmásoljuk az előző stage eredményét
+COPY --from=rust-1.97 /opt/rust-1.97 /opt/rust-1.97
+
+WORKDIR /tmp
+RUN set -eux; \
+    curl -LO https://static.rust-lang.org/dist/rustc-1.98.0-src.tar.gz; \
+    tar xf rustc-1.98.0-src.tar.gz; \
+    cd rustc-1.98.0-src; \
+    \
+    printf '%s\n' \
+        '[build]' \
+        'docs = false' \
+        'compiler-docs = false' \
+        'extended = true' \
+        'tools = ["cargo"]' \
+        'jobs = 8' \
+        'rustc = "/opt/rust-1.97/bin/rustc"' \
+        'cargo = "/opt/rust-1.97/bin/cargo"' \
+        '' \
+        '[rust]' \
+        'codegen-units = 1' \
+        'lto = "off"' \
+        'debug = false' \
+        'debuginfo-level = 0' \
+        > config.toml; \
+    \
+    ./x.py build --stage 2; \
+    ./x.py install --prefix=/opt/rust-1.98; \
+    \
+    /opt/rust-1.98/bin/rustc --version; \
+    \
+    cd /; \
+    rm -rf /tmp/rustc-1.98.0-src /tmp/rustc-1.98.0-src.tar.gz
+
+# ============================================================
+# 3. lépés: 1.98 → 1.99.1
+# ============================================================
+FROM base AS rust-1.99
+
+COPY --from=rust-1.98 /opt/rust-1.98 /opt/rust-1.98
+
+WORKDIR /tmp
+RUN set -eux; \
+    curl -LO https://static.rust-lang.org/dist/rustc-1.99.1-src.tar.gz; \
+    tar xf rustc-1.99.1-src.tar.gz; \
+    cd rustc-1.99.1-src; \
+    \
+    printf '%s\n' \
+        '[build]' \
+        'docs = false' \
+        'compiler-docs = false' \
+        'extended = true' \
+        'tools = ["cargo"]' \
+        'jobs = 8' \
+        'rustc = "/opt/rust-1.98/bin/rustc"' \
+        'cargo = "/opt/rust-1.98/bin/cargo"' \
+        '' \
+        '[rust]' \
+        'codegen-units = 1' \
+        'lto = "off"' \
+        'debug = false' \
+        'debuginfo-level = 0' \
+        > config.toml; \
+    \
+    ./x.py build --stage 2; \
+    ./x.py install --prefix=/usr/local; \
+    \
+    /usr/local/bin/rustc --version; \
+    /usr/local/bin/cargo --version; \
+    \
+    cd /; \
+    rm -rf /tmp/rustc-1.99.1-src /tmp/rustc-1.99.1-src.tar.gz /opt/rust-1.98
+
+# ============================================================
+# Végső image
+# ============================================================
+FROM ${BASE}
+
+# Csak a kész 1.99.1 toolchain
+COPY --from=rust-1.99 /usr/local /usr/local
+
+ENV PATH=/usr/local/bin:$PATH
+
+RUN rustc --version && cargo --version
+
+# Opcionális
+RUN pip install --no-cache-dir maturin

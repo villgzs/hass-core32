@@ -1,0 +1,3 @@
+triggered_at=2026-11-20T22:51:58Z
+source_repo=villgzs/schedule
+run_id=44832339445

@@ -1,0 +1,66 @@
+name: Download HA Core translations
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download-translations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest stable release tag
+        id: version
+        run: |
+          TAG=$(gh api repos/home-assistant/core/releases/latest --jq .tag_name)
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "Latest stable tag: $TAG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find the Build images workflow run for the latest stable tag
+        id: run
+        run: |
+          TAG="${{ steps.version.outputs.version }}"
+          echo "Looking for tag: $TAG"
+      
+          # Lekérjük a legutóbbi sikeres release event-eket
+          echo "Run - not sure "
+          RUN_ID=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.display_title | test(\"$TAG\")) | .id" \
+            | head -n1)
+          
+          echo "Found run-id (title contains $TAG): $RUN_ID"
+            
+          echo "Run - sure "
+
+          RUN_ID_SURE=$(gh api \
+            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?event=release&status=success&per_page=30" \
+            --jq ".workflow_runs[] | select(.head_branch == \"$TAG\" or (.display_title | contains(\"$TAG\"))) | .id" \
+            | head -n1)
+            
+          echo "Found run-id (title contains $TAG): $RUN_ID_SURE"
+                
+          if [ -z "$RUN_ID_SURE" ]; then
+            echo "Nem találtam sikeres Build images futást a $TAG taghez"
+            exit 1
+          fi
+
+          echo "run_id=$RUN_ID"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Found run-id: $RUN_ID (title contains $TAG)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download translations artifact
+        uses: actions/download-artifact@v4   # vagy újabb
+        with:
+          name: translations
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # public repo esetén elég
+          repository: home-assistant/core
+          run-id: ${{ steps.run.outputs.run_id }}
+
+      - name: Extract
+        run: |
+          echo "tar xvf translations.tar.gz"
+          # ls -la homeassistant/components/*/translations/ 
