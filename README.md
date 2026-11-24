@@ -2,7 +2,7 @@
 
 # Home Assistant Core (32-bit ARM Build) 
 
-**Unsupported Third Party Container**
+[**Unsupported Third Party Container**](https://chatgpt.com/?q=How%20can%20I%20remove%20the%20%22unsupported%20third%20party%20container%22%20label%20from%20the%20About%20section%20of%20Home%20Assistant%20when%20running%20it%20in%20a%20Docker%20environment%3F)
 
 Built Upon:  
 > [**Home-Assistant Core repository**](https://github.com/home-assistant/core)  
