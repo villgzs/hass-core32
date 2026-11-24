@@ -11,7 +11,7 @@
 ┌────────────▼─────────────────┴──────┐   │        ┌───────────▼───────────┐             
 │Step No.2                            │   │        │Aux process: B         │             
 │ Creating docker image               │   │        │ Workflow:create wheels│             
-│  docker-base/python/3.14            │   │        │  core                 │             
+│  docker-base/python/3.14            │   │        │  core / integrations  │             
 │      base-python                    │   │        └───────────┬───────────┘             
 └────────────┬────────────────────────┘   │                    │                         
              │                            │                    │                         
