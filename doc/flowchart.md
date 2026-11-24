@@ -12,7 +12,7 @@
 │Step No.2                            │   │        │Aux process: B         │             
 │ Creating docker image               │   │        │ Workflow:create wheels│             
 │  docker-base/python/3.14            │   │        │  core                 │             
-│base-python                          │   │        └───────────┬───────────┘             
+│      base-python                    │   │        └───────────┬───────────┘             
 └────────────┬────────────────────────┘   │                    │                         
              │                            │                    │                         
              │                            │                    ▼                         
@@ -20,14 +20,14 @@
 │Step No.3.                  │        │                                                 │
 │ Creating docker image      │◄───────┤https://wheels.home-assistant.io/musllinux-index/│
 │  docker                    │    ┌───┤                                                 │
-│homeassistant-base          │    │   └─────────────────────────────────────────────────┘
+│    homeassistant-base      │    │   └─────────────────────────────────────────────────┘
 └────────────┬───────────────┘    │                                                      
              │                    │                                                      
              │                    │                                                      
 ┌────────────▼────────────┐       │                                                      
 │Step No.4.               │       │                                                      
 │ Creating docker image   │◄──────┘                                                      
-│  core                   │                                                              
+│         core            │                                                              
 │                         │                                                              
 └─────────────────────────┘                                                              
 ```
