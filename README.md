@@ -5,12 +5,11 @@
 **Unsupported Third Party Container**
 
 Built Upon:
-- [**Home-Assistant Core repository**](https://github.com/home-assistant/core)   
-- [**Wheels**](https://github.com/home-assistant/wheels)   
-- [**Docker**](https://github.com/home-assistant/docker)   
-- [**Docker-base**](https://github.com/home-assistant/docker-base)  
-
-  
+- [**Home-Assistant Core repository**](https://github.com/home-assistant/core)
+- [**Wheels**](https://github.com/home-assistant/wheels)
+- [**Docker**](https://github.com/home-assistant/docker)
+- [**Docker-base**](https://github.com/home-assistant/docker-base)
+   
 You can find Home-assistant official releases here:  
 [https://github.com/home-assistant/core/releases](https://github.com/home-assistant/core/releases)  
 
