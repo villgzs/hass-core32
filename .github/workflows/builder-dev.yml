@@ -432,6 +432,7 @@ jobs:
           fi
 
           mkdir -p "$TARGET_DIR"
+          
           cp "$SOURCE_FILE" "$TARGET_FILE"
           echo "Saved as: $TARGET_FILE"
           ls -lh "$TARGET_FILE"
@@ -475,7 +476,9 @@ jobs:
           fi
         
           # Fájl másolása a cél repó megfelelő mappájába
-          mkdir -p "translations"
+          mkdir -p "translations"              
+          rm "translations"/*.png "translations"*.md || true
+          
           cp "$OLDPWD/$TARGET_FILE" "$TARGET_FILE"
         
           git add "$TARGET_FILE"
