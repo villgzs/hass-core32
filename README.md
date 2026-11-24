@@ -95,7 +95,7 @@ docker run -d \
 - [Don't forget the latest official](https://hub.docker.com/r/homeassistant/armv7-homeassistant/tags)
 - [Results of this repo ](https://hub.docker.com/r/dockergzs/homeassistant-armv7/tags)
 
-## 🙏 Made Possible By
+## 🤝 Made Possible By
 
 - [ChatGPT](https://chatgpt.com/)
 - [GEMINI](https://gemini.google.com/)
