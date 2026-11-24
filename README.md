@@ -22,7 +22,6 @@ Latest official image can be found here:
 
 # THIS IS NOT OFFICIAL RELEASE !
 
----
 ⚠️ **IMPORTANT DISCLAIMER**
 
   **Unofficial Build:** This repository is not created or supported by the official Home Assistant team. Please do not submit issue reports or complaints to Home Assistant developers.
