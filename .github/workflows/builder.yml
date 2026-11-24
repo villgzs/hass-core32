@@ -367,7 +367,7 @@ jobs:
         
           # Fájl másolása a cél repó megfelelő mappájába
           mkdir -p "translations"              
-          rm "translations"/*.png "translations"*.md || true
+          rm "translations"/*.png "translations"/*.md || true
           
           cp "$OLDPWD/$TARGET_FILE" "$TARGET_FILE"
         
