@@ -371,7 +371,7 @@ jobs:
           
           cp "$OLDPWD/$TARGET_FILE" "$TARGET_FILE"
         
-          git add "$TARGET_FILE"
+          git add .
         
           if git diff --staged --quiet; then
             echo "No changes to commit (file already exists and is identical)."
