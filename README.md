@@ -4,11 +4,11 @@
 
 **Unsupported Third Party Container**
 
-Originals:
-- [Home-Assistant Core repository](https://github.com/home-assistant/core)   
-- [Wheels](https://github.com/home-assistant/wheels)   
-- [Docker](https://github.com/home-assistant/docker)   
-- [Docker-base](https://github.com/home-assistant/docker-base)  
+Built Upon:
+- [**Home-Assistant Core repository**](https://github.com/home-assistant/core)   
+- [**Wheels**](https://github.com/home-assistant/wheels)   
+- [**Docker**](https://github.com/home-assistant/docker)   
+- [**Docker-base**](https://github.com/home-assistant/docker-base)  
 
   
 You can find Home-assistant official releases here:  
@@ -65,7 +65,7 @@ dockergzs/armv7-homeassistant:<version>
 dockergzs/homeassistant-armv7:<version>
 ```
 
-## Run the container
+## 🔌 Run the container
 
 Fill in ___PATH_TO_YOUR_CONFIG___ section:
 
@@ -96,3 +96,8 @@ docker run -d \
 - [Don't forget the latest official](https://hub.docker.com/r/homeassistant/armv7-homeassistant/tags)
 - [Results of this repo ](https://hub.docker.com/r/dockergzs/homeassistant-armv7/tags)
 
+## 🙏 Made Possible By
+
+- [ChatGPT](https://chatgpt.com/)
+- [GEMINI](https://gemini.google.com/)
+- [GrOK](https://grok.com/)
