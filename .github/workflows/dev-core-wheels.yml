@@ -550,7 +550,7 @@ jobs:
           echo "- version: ${{ steps.version.outputs.version }}"  | tee -a tobe_README.md
           echo "-     sha: ${{ steps.version.outputs.version }}"  | tee -a tobe_README.md
           echo "  "  | tee -a tobe_README.md
-          echo "- During the last build: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
+          echo "- During this build: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
           echo "- Number of wheels:      $(find musllinux-repo -name '*.whl' | wc -l)  " | tee -a tobe_README.md
           echo "  "  | tee -a tobe_README.md
           echo " --------------------------------------------- "   | tee -a tobe_README.md
