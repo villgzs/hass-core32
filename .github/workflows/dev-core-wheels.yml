@@ -566,9 +566,7 @@ jobs:
           cat README.dev-integrations.md >> README.md || true
           cat README.core.md >> README.md || true
           cat README.integrations.md >> README.md || true
-
-          cd ..
-
+          
           # Csak a 100 MiB-nél kisebb fájlokat adjuk hozzá
           # find musllinux -type f -size -100M -print0 | xargs -0 git add
           git add .
