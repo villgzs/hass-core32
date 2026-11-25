@@ -1,6 +1,6 @@
 [**LICENSE**](https://raw.githubusercontent.com/home-assistant/workflows/refs/heads/main/LICENSE)
 
-# Home Assistant Core (32-bit ARM Build) 
+# Home Assistant Core (32-bit ARM Build - armv7 - armv7l) 
 
 [**Unsupported Third Party Container**](https://chatgpt.com/?q=How%20can%20I%20remove%20the%20%22unsupported%20third%20party%20container%22%20label%20from%20the%20About%20section%20of%20Home%20Assistant%20when%20running%20it%20in%20a%20Docker%20environment%3F)
 
