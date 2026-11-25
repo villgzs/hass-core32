@@ -135,9 +135,8 @@ jobs:
         run: |
           # A legutóbbi sikeres futás a builder.yml workflow-ból, dev ágon
           # (scheduled vagy workflow_dispatch, head_branch == "dev")
-          RUN_JSON=$(gh api \
-            "/repos/home-assistant/core/actions/workflows/builder.yml/runs?branch=dev&per_page=10" \
-            --jq '.workflow_runs[0]')
+          RUN_JSON=$(gh api "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=completed&per_page=15" \
+            --jq '.workflow_runs[1]')
 
           if [ -z "$RUN_JSON" ] || [ "$RUN_JSON" = "null" ]; then
             echo "::error::Nem találtam sikeres Build images futást a dev ágon"
