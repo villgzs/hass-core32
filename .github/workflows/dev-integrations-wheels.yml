@@ -52,7 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       basever: ${{ steps.ha-ba-lat.outputs.basever }}
-      wheelsver: ${{ steps.ha-we-lat.outputs.wheelsver }}      
+      wheelsver: ${{ steps.ha-we-lat.outputs.wheelsver }}     
+      core-sha: ${{ steps.wheels.outputs.core-sha }}
 
     steps:
       - name: Aktuális idő kiírása
@@ -96,8 +97,27 @@ jobs:
                     
           echo "wheelsver=${VERSION}" >> $GITHUB_OUTPUT
                     
-          echo "- wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY          
-    
+          echo "- wheelsver=${VERSION}"   >> $GITHUB_STEP_SUMMARY  
+
+      - name: Checking for latest build of CORE wheels
+        id: wheels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          README=$(gh api "repos/villgzs/musllinux/contents/README.md" \
+                      --jq '.content' | base64 -d)
+
+          echo "Core finished with:"
+          echo "${README}"
+          echo
+          README=$(echo "${README}" | grep "sha:" | head -n 1 )
+          echo "${README}"
+          README="${README##*: }"
+          echo "${README}"
+
+          echo "core-sha=${README}" >> $GITHUB_OUTPUT 
+          echo "- core wheels as SHA=${README}"   >> $GITHUB_STEP_SUMMARY 
+          
   # --------------------------------------------------
   # 1) Core verzió + requirements előkészítés
   # --------------------------------------------------
@@ -162,11 +182,13 @@ jobs:
           echo "  version    = $VERSION"
 
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
+          echo "sha=${{needs.prepare.outputs.core-sha}}" >> $GITHUB_OUTPUT
+          #echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
           echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
 
           echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "SHA: ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "SHA(be used): ${{needs.prepare.outputs.core-sha}}" >> $GITHUB_STEP_SUMMARY
           echo "Run ID: ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
 
       - name: Checkout official Home Assistant core (dev branch, specific SHA)
