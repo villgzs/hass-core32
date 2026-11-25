@@ -543,11 +543,15 @@ jobs:
 
           echo "#### Musllinux wheels (armv7l) ($(date -u +'%Z %Y-%b-%d %T'))  " | tee tobe_README.md
           echo "  " | tee -a tobe_README.md
-          echo "#### Last build from https://github.com/home-assistant/core: ${{ steps.version.outputs.version }}  " | tee -a tobe_README.md
+          echo "  **dev-core** " | tee -a tobe_README.md          
+          echo "  " | tee -a tobe_README.md
+          echo "#### Last build from https://github.com/home-assistant/core:   " | tee -a tobe_README.md
           echo "  "  | tee -a tobe_README.md
-          
-          echo "- During the last build - armv7 - **dev-core**: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
-          echo "- Number of wheels: $(find musllinux-repo -name '*.whl' | wc -l)  " | tee -a tobe_README.md
+          echo "- version: ${{ steps.version.outputs.version }}"  | tee -a tobe_README.md
+          echo "-     sha: ${{ steps.version.outputs.version }}"  | tee -a tobe_README.md
+          echo "  "  | tee -a tobe_README.md
+          echo "- During the last build: $(find ${{env.OUTDIR}} -type f -name '*.whl' 2>/dev/null | wc -l)  " | tee -a tobe_README.md
+          echo "- Number of wheels:      $(find musllinux-repo -name '*.whl' | wc -l)  " | tee -a tobe_README.md
           echo "  "  | tee -a tobe_README.md
           echo " --------------------------------------------- "   | tee -a tobe_README.md
 
@@ -555,11 +559,9 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           cd musllinux-repo
-          mkdir -p wheels32bit
-          cd wheels32bit          
 
-          cp ../../tobe_README.md ./README.md
-          cp ../../tobe_README.md ./README.dev-core.md
+          cp ../tobe_README.md ./README.md
+          cp ../tobe_README.md ./README.dev-core.md
           
           cat README.dev-integrations.md >> README.md || true
           cat README.core.md >> README.md || true
