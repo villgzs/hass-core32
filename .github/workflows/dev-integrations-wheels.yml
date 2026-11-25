@@ -642,9 +642,9 @@ jobs:
               "repos/${REPO}/actions/workflows/${WORKFLOW}/runs?status=queued&per_page=5" \
               --jq '.total_count')
 
-            IN_PROGRESS1=$(gh run list --repo $REPO --status in_progress --json databaseId -q 'length')
+            IN_PROGRESS1=$(gh run list --repo $REPO1 --status in_progress --json databaseId -q 'length')
 
-            QUEUED1=$(gh run list --repo $REPO --status queued --json databaseId -q 'length')
+            QUEUED1=$(gh run list --repo $REPO1 --status queued --json databaseId -q 'length')
 
             TOTAL=$((IN_PROGRESS + QUEUED + IN_PROGRESS1 + QUEUED1))
 
