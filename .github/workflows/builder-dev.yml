@@ -201,12 +201,40 @@ jobs:
             echo "::warning::Nem sikerült a jobverziót kinyerni. A nem akarom módszerrel adok TAG-et."
             JOBVERSION="dev-${CREATED_AT}-${SHORT_SHA}"
           fi
-
-
+          
           VERSION="$JOBVERSION"
-          DOCKERTAGS="${{ env.EXTRA_TAGS }}"
+          
+          LATEST_VERSION=$(gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | head -n 1)
 
-          echo "Found $RUN_CONCLUSION  run on dev:"
+          echo "${LATEST_VERSION}"
+          BETA_VERSION=${DISPLAY_TITLE%*b}
+          echo "Beta: ${BETA_VERSION}"
+
+          if [[ "${DISPLAY_TITLE}" == "Build images" ]]; then
+
+              echo "It is a dev run."
+              DOCKERTAGS="dev"
+
+          else
+
+            if [[ "${DISPLAY_TITLE}" == "${LATEST_VERSION}" ]]; then
+
+              echo "Jobversion is the LATEST version!"
+              DOCKERTAGS="latest"
+              
+              if [[ "${DISPLAY_TITLE}" == "*b*" ]]; then
+                echo "It is a BETA version."
+                DOCKERTAGS="beta"                              
+              fi
+
+            else            
+              echo "Probably this was a test?"
+              DOCKERTAGS="testing"
+            fi
+
+          fi
+          
+          echo "Found ** ${RUN_CONCLUSION} **  run on dev:"
           echo "  run_id       = $RUN_ID"
           echo "  head_sha     = $HEAD_SHA"
           echo "  short_sha    = $SHORT_SHA"
