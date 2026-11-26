@@ -1,0 +1,31 @@
+# ┌─┬─┬─┐
+# │X│ │ │
+# ├─┼─┼─┤
+# │ │X│ │
+# ├─┼─┼─┤
+# │O│ │O│
+# └─┴─┴─┘
+name: TIC-TAC-TOE
+on:
+  push:
+    branches:
+      - tic-tac-toe
+      
+  workflow_dispatch:      
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true    
+
+env:
+  THIS_REPO: villgzs/hass-core32
+  THIS_REPO_PATH: hass-core32
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+jobs:
+  call-time-workflow:  
+    uses: villgzs/villgzs/.github/workflows/get-time.yml@main   # ← helyi reusable workflow
