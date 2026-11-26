@@ -53,7 +53,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ha.outputs.version }}
-      jobversion: ${{ steps.ha.outputs.jobversion }}
       pyver: ${{ steps.ha.outputs.pythonversion}}
       dockver: ${{ steps.ha.outputs.dockerversion }}
       tags: ${{ steps.ha.outputs.tags }}
@@ -202,50 +201,66 @@ jobs:
             JOBVERSION="dev-${CREATED_AT}-${SHORT_SHA}"
           fi
           
-          VERSION="$JOBVERSION"
-          
           LATEST_VERSION=$(gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | head -n 1)
+          #LATEST_VERSION="2026.12.0"
+          #LATEST_VERSION="${DISPLAY_TITLE}"
+
+          #JOBVERSION="2026.12.0"
+          #JOBVERSION="2027.1.0.dev202611260217"
 
           echo "${LATEST_VERSION}"
-          BETA_VERSION=${DISPLAY_TITLE%*b}
+          echo
+          BETA_VERSION=${DISPLAY_TITLE##*b}
           echo "Beta: ${BETA_VERSION}"
+          echo
 
           if [[ "${DISPLAY_TITLE}" == "Build images" ]]; then
 
               echo "It is a dev run."
               DOCKERTAGS="dev"
+              VERSION="${JOBVERSION}"
 
           else
 
             if [[ "${DISPLAY_TITLE}" == "${LATEST_VERSION}" ]]; then
 
               echo "Jobversion is the LATEST version!"
-              DOCKERTAGS="latest"
-              
-              if [[ "${DISPLAY_TITLE}" == "*b*" ]]; then
-                echo "It is a BETA version."
-                DOCKERTAGS="beta"                              
+              VERSION="${LATEST_VERSION}"
+
+              if [[ "${DISPLAY_TITLE}" == *b* ]]; then
+                echo "It is a BETA version. Beta = ${BETA_VERSION}"
+                DOCKERTAGS="beta"
+              else
+                echo "It is a STABLE version."
+                DOCKERTAGS="latest"
               fi
 
-            else            
+            else
               echo "Probably this was a test?"
-              DOCKERTAGS="testing"
+              DOCKERTAGS="test"
+              VERSION="${JOBVERSION}"
             fi
 
           fi
-          
+
+          echo
           echo "Found ** ${RUN_CONCLUSION} **  run on dev:"
           echo "  run_id       = $RUN_ID"
           echo "  head_sha     = $HEAD_SHA"
           echo "  short_sha    = $SHORT_SHA"
           echo "  created_at   = $CREATED_AT"
-          echo "  title        = $DISPLAY_TITLE"
-          echo "  version      = $VERSION"
+          echo "  title        = $DISPLAY_TITLE"          
           echo "  jobversion   = $JOBVERSION"
+          echo
+          echo "  latestversion= $LATEST_VERSION"
+          echo
+          echo "  version      = $VERSION"
+          echo "  dockertags   = $DOCKERTAGS"
+          
+          
           echo "Core wheels are built from sha= ${{steps.wheels.outputs.core-sha}}"
           
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "jobversion=${JOBVERSION}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT          
           echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
           echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
           
