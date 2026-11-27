@@ -249,7 +249,7 @@ jobs:
         echo "TRIGGER ?"
         if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
           echo "A ${DOCKERTAGS} változat már készen van."
-          echo "trigger-update-dev"='false'" >> $GITHUB_OUTPUT
+          echo "trigger-update-dev='false'" >> $GITHUB_OUTPUT
           exit 0
 
         fi
