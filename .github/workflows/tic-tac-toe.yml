@@ -35,8 +35,8 @@ jobs:
     steps:
     - name: Query Docker Hub tags matching latest
       env:
-        DOCKERHUB_NAMESPACE: myorg     # hivatalos image-nél: library
-        DOCKERHUB_REPO: myapp
+        DOCKERHUB_NAMESPACE: dockergzs     # hivatalos image-nél: library
+        DOCKERHUB_REPO: armv7-homeassistant
         DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_READ_USERNAME }}      # privát repóhoz kötelező
         DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_READ_TOKEN }}       # privát repóhoz kötelező
       run: |
