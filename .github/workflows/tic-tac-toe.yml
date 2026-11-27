@@ -261,11 +261,12 @@ jobs:
 
     - name: Update orphan trigger-dev branch in villgzs/hass-core32 - dev
       env:
-          TARGET_TOKEN: ${{ secrets.PUSH_TO_HASS_CORE32_TRIGGER }}
+          TARGET_TOKEN: ${{ secrets.UPDATE_HASS_CORE32 }}
           TARGET_REPO: villgzs/hass-core32
           TARGET_BRANCH: dev
           TARGET_FILE: trigger.txt
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       if: steps.matching.outputs.trigger-update-dev=='true'
       run: |
           set -euo pipefail
