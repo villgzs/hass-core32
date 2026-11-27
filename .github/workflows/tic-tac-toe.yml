@@ -52,6 +52,7 @@ jobs:
             -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_TOKEN}\"}" \
             | jq -r '.token')
           AUTH_HEADER=(-H "Authorization: JWT ${TOKEN}")
+          echo "Authorization: OK"
         fi
 
         URL="https://hub.docker.com/v2/repositories/${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}/tags?page_size=100"
