@@ -124,7 +124,7 @@ jobs:
 
         # A legutóbbi futás a builder.yml workflow-ból
         RUN_JSON=$(gh api "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=completed&per_page=5" \
-          --jq '.workflow_runs[0]')
+          --jq '.workflow_runs[1]')
 
         if [ -z "$RUN_JSON" ] || [ "$RUN_JSON" = "null" ]; then
           echo "::error::Nem találtam sikeres Build images futást"
