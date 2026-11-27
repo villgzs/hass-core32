@@ -18,8 +18,6 @@ on:
         description: 'Sorok száma:'
         required: false
         default: "30"  
-  schedule:
-    - cron: "30 00 * * *"   
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
