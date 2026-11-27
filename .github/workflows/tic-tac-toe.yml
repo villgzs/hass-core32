@@ -249,12 +249,14 @@ jobs:
         echo "TRIGGER ?"
         if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
           echo "A ${DOCKERTAGS} változat már készen van."
+          echo "${DOCKERTAGS} / ${VERSION} : Already done." >> $GITHUB_STEP_SUMMARY
           echo "trigger-update-dev=false" >> $GITHUB_OUTPUT
           exit 0
 
         fi
 
         echo "LET's TRIGGER!!!"
+        echo "${DOCKERTAGS} / ${VERSION} : Build required." >> $GITHUB_STEP_SUMMARY
         echo "trigger-update-dev=true" >> $GITHUB_OUTPUT
 
     - name: Update orphan trigger-dev branch in villgzs/hass-core32 - dev
