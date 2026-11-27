@@ -29,3 +29,73 @@ permissions:
 jobs:
   call-time-workflow:  
     uses: villgzs/villgzs/.github/workflows/get-time.yml@main   # ← helyi reusable workflow
+
+  find-matching-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Docker Hub tags matching latest
+        env:
+          DOCKERHUB_NAMESPACE: myorg     # hivatalos image-nél: library
+          DOCKERHUB_REPO: myapp
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }} # privát repóhoz kötelező
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}       # privát repóhoz kötelező
+        run: |
+
+          set -euo pipefail
+          echo "login..."
+
+          AUTH_HEADER=()
+          if [[ -n "${DOCKERHUB_USERNAME:-}" && -n "${DOCKERHUB_TOKEN:-}" ]]; then
+            TOKEN=$(curl -fsSL -X POST "https://hub.docker.com/v2/users/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_TOKEN}\"}" \
+              | jq -r '.token')
+            AUTH_HEADER=(-H "Authorization: JWT ${TOKEN}")
+          fi
+
+          URL="https://hub.docker.com/v2/repositories/${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}/tags?page_size=100"
+          ALL_TAGS="[]"
+
+          while [[ -n "${URL}" && "${URL}" != "null" ]]; do
+            RESP=$(curl -fsSL "${AUTH_HEADER[@]+"${AUTH_HEADER[@]}"}" "${URL}")
+            PAGE_ITEMS=$(echo "${RESP}" | jq '.results')
+            ALL_TAGS=$(jq -s '.[0] + .[1]' <(echo "${ALL_TAGS}") <(echo "${PAGE_ITEMS}"))
+            URL=$(echo "${RESP}" | jq -r '.next')
+          done
+
+          TARGET_TAGS=("latest" "dev" "beta")
+
+          for tag in "${TARGET_TAGS[@]}"; do
+            digest=$(echo "${ALL_TAGS}" | jq -r --arg t "${tag}" '
+              map(select(.name == $t))
+              | first
+              | (.digest // .images[0].digest // empty)
+            ')
+
+            if [[ -z "${digest}" ]]; then
+              echo "Figyelmeztetés: nem található '${tag}' tag vagy digest, kihagyva." >&2
+              continue
+            fi
+
+            matching_tags=$(echo "${ALL_TAGS}" | jq -r --arg t "${tag}" --arg d "${digest}" '
+              [
+                .[]
+                | select(.name != $t)
+                | select(
+                    (.digest == $d)
+                    or ([.images[]?.digest] | index($d) != null)
+                  )
+                | .name
+              ]
+              | unique
+              | .[]
+            ')
+
+            echo "=== ${tag} ==="
+            echo "Digest: ${digest}"
+            echo "Azonos kiadású tagek:"
+            echo "${matching_tags:-<nincs találat>}"
+            matchtag="$(echo "${matching_tags}" | head -n 1 )"
+            echo "${matchtag#*-}"
+            echo "done_${tag}=${matchtag}"
+          done
