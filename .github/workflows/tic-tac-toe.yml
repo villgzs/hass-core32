@@ -55,6 +55,7 @@ jobs:
           echo "Authorization: OK"
         fi
 
+        echo "Getting tags..."
         URL="https://hub.docker.com/v2/repositories/${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}/tags?page_size=100"
         ALL_TAGS="[]"
 
@@ -63,6 +64,7 @@ jobs:
           PAGE_ITEMS=$(echo "${RESP}" | jq '.results')
           ALL_TAGS=$(jq -s '.[0] + .[1]' <(echo "${ALL_TAGS}") <(echo "${PAGE_ITEMS}"))
           URL=$(echo "${RESP}" | jq -r '.next')
+          echo "Get done."
         done
 
         TARGET_TAGS=("latest" "dev" "beta")
