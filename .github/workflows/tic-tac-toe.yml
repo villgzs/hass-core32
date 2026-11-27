@@ -102,4 +102,6 @@ jobs:
           matchtag="$(echo "${matching_tags}" | head -n 1 )"
           echo "${matchtag#*-}"
           echo "done_${tag}=${matchtag}"
+          echo "done_${tag}=${matchtag}" >> GITHUB_OUTPUT
+          echo "done_${tag}=${matchtag}" >> GITHUB_STEP_SUMMARY
         done
