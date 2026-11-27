@@ -34,6 +34,7 @@ jobs:
     runs-on: ubuntu-slim
     steps:
     - name: Query Docker Hub tags matching latest
+      id: matching
       env:
         DOCKERHUB_NAMESPACE: dockergzs     # hivatalos image-nél: library
         DOCKERHUB_REPO: armv7-homeassistant
@@ -240,8 +241,55 @@ jobs:
 
         if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
           echo "A ${DOCKERTAGS} változat már készen van."
+          echo "trigger-update-dev"='false'" >> $GITHUB_OUTPUT
           exit 0
 
         fi
 
         echo "LET's TRIGGER!!!"
+        echo "trigger-update-dev"='true'" >> $GITHUB_OUTPUT
+
+    - name: Update orphan trigger-dev branch in villgzs/hass-core32 - dev
+      env:
+          TARGET_TOKEN: ${{ secrets.PUSH_TO_HASS_CORE32_TRIGGER }}
+          TARGET_REPO: villgzs/hass-core32
+          TARGET_BRANCH: dev
+          TARGET_FILE: trigger.txt
+      if: steps.matching.outputs.trigger-update-dev=='true'
+      run: |
+          set -euo pipefail
+
+          WORK_DIR="$(mktemp -d)"
+          trap 'rm -rf "$WORK_DIR"' EXIT
+
+          cd "$WORK_DIR"
+          git init
+          git remote add origin "https://x-access-token:${TARGET_TOKEN}@github.com/${TARGET_REPO}.git"
+
+          # Main branch letöltése
+          git fetch origin main
+
+          # Új, előzmények nélküli branch létrehozása a main tartalmával
+          git checkout --orphan "$TARGET_BRANCH" origin/main
+
+          # A trigger fájl létrehozása
+          printf 'triggered_at=%s\nsource_repo=%s\nrun_id=%s\n' \
+              "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              "${{ github.repository }}" \
+              "${{ github.run_id }}" > "$TARGET_FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # A main teljes tartalmának és a trigger fájlnak a hozzáadása
+          git add -A
+          git commit -m "bot: start"
+
+          # Force push → a régi history teljesen eltűnik
+          git push --force origin "HEAD:${TARGET_BRANCH}"
+
+          echo "### Orphan trigger branch frissítve" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Forrás: main" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Cél: \`${TARGET_REPO}\` → \`${TARGET_BRANCH}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Fájl: \`${TARGET_FILE}\`" >> "$GITHUB_STEP_SUMMARY"
+        
