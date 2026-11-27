@@ -246,6 +246,7 @@ jobs:
         echo "SHA:                       ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
         echo "Run ID:                    ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
 
+        echo "TRIGGER ?"
         if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
           echo "A ${DOCKERTAGS} változat már készen van."
           echo "trigger-update-dev"='false'" >> $GITHUB_OUTPUT
