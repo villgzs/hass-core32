@@ -236,7 +236,7 @@ jobs:
 
         echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
 
-
+        echo "SUMMARY"
         echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
         echo "~~~  " >> $GITHUB_STEP_SUMMARY
         echo "          --- $RUN_CONCLUSION --- " >> $GITHUB_STEP_SUMMARY
