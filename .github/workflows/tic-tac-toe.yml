@@ -105,5 +105,143 @@ jobs:
           DONE_TAGS["${tag}"]="${matchtag}"
           echo "done_${tag}=${matchtag}"
           echo "done_${tag}=${matchtag}" >> $GITHUB_OUTPUT
-          echo "done_${tag}=${matchtag}" >> $GITHUB_STEP_SUMMARY          
+          echo "done_${tag}=${matchtag}" >> $GITHUB_STEP_SUMMARY
         done
+
+        ###########################################################################################################
+
+        LASTLIST="$(gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name')"
+        LASTRELEASE=$(echo "${LASTLIST}" | head -n 1 )
+        LAST_STABLE=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
+
+        # A legutóbbi futás a builder.yml workflow-ból
+        RUN_JSON=$(gh api "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=completed&per_page=5" \
+          --jq '.workflow_runs[0]')
+
+        if [ -z "$RUN_JSON" ] || [ "$RUN_JSON" = "null" ]; then
+          echo "::error::Nem találtam sikeres Build images futást"
+          exit 1
+        fi
+
+        RUN_ID=$(echo "$RUN_JSON" | jq -r '.id')
+        HEAD_SHA=$(echo "$RUN_JSON" | jq -r '.head_sha')
+        # A dev buildnél a verzió tipikusan nightly formátumú (pl. 2026.10.0.dev0)
+        # A head_sha rövid formáját és a dátumot használjuk a taghez
+        SHORT_SHA=$(echo "$HEAD_SHA" | cut -c1-7)
+        # Próbáljuk kiolvasni a display_title-ból vagy a head_branch-ből
+        DISPLAY_TITLE=$(echo "$RUN_JSON" | jq -r '.display_title // empty')
+        CREATED_AT=$(echo "$RUN_JSON" | jq -r '.created_at' | cut -dT -f1)
+        CHECK_SUITE_ID=$(echo "$RUN_JSON" | jq -r '.check_suite_id')
+        RUN_CONCLUSION=$(echo "$RUN_JSON" | jq -r '.conclusion')
+
+        JOBVERSION=""
+        TMPDIR=$(mktemp -d)
+        echo "- tempdir: $TMPDIR"
+        LOG_ZIP="${TMPDIR}/suite-logs.zip"
+
+        # Fallback 1: teljes run log (API) - sikeres home-Assistant futásoknál ez működött, de a sikertelennél nem adott eredményt
+        if [ -z "$JOBVERSION" ]; then
+          echo "Fallback 1: Próbálom a /actions/runs/.../logs endpointot..."
+          if gh api \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/home-assistant/core/actions/runs/${RUN_ID}/logs" \
+                > "$LOG_ZIP" 2>/dev/null; then
+            echo "Fallback 1: Lekérés megtörtént. Kicsomagolás..."
+            unzip -q -o "$LOG_ZIP" -d "$TMPDIR" || true
+            # ls -las "$TMPDIR"
+            PUBLISH_LOG=$(find "$TMPDIR" -type f -iname '*Publish*home-assistant*.txt' | head -1)
+            echo "$PUBLISH_LOG"
+            if [ -n "$PUBLISH_LOG" ]; then
+              JOBVERSION=$(grep -oE 'DOCKER_METADATA_OUTPUT_VERSION:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9]+)?' "$PUBLISH_LOG" \
+                            | head -1 \
+                            | sed -E 's/DOCKER_METADATA_OUTPUT_VERSION:[[:space:]]*//' \
+                            || true)
+            fi
+            echo "Fallback 1: lekérés eredménye - JOBVERSION = $JOBVERSION"
+          else
+            echo "::warning::Fallback 1 API lekérés sikertelen volt."
+          fi
+        fi
+
+        echo "Found $RUN_CONCLUSION run on dev:"
+        echo "  run_id          = $RUN_ID"
+        echo "  check_suite_id  = $CHECK_SUITE_ID"
+        echo "  head_sha        = $HEAD_SHA"
+        echo "  short_sha       = $SHORT_SHA"
+        echo "  created_at      = $CREATED_AT"
+        echo "  title           = $DISPLAY_TITLE"
+        echo
+
+        LATEST_VERSION=${LASTRELEASE}
+        echo "${LATEST_VERSION}"
+        echo
+        BETA_VERSION=${DISPLAY_TITLE##*b}
+        echo "Beta: ${BETA_VERSION}"
+        echo
+
+        if [[ "${DISPLAY_TITLE}" == "Build images" ]]; then
+
+            echo "It is a dev run."
+            DOCKERTAGS="dev"
+            VERSION="${JOBVERSION}"
+
+        else
+
+          if [[ "${DISPLAY_TITLE}" == "${LATEST_VERSION}" ]]; then
+
+            echo "Jobversion is the LATEST version!"
+            VERSION="${LATEST_VERSION}"
+
+            if [[ "${DISPLAY_TITLE}" == *b* ]]; then
+              echo "It is a BETA version. Beta = ${BETA_VERSION}"
+              DOCKERTAGS="beta"
+            else
+              echo "It is a STABLE version."
+              DOCKERTAGS="latest"
+            fi
+
+          else
+            echo "Probably this was a test?"
+            DOCKERTAGS="test"
+            VERSION="${JOBVERSION}"
+          fi
+
+        fi
+
+        echo
+        echo "Found ** ${RUN_CONCLUSION} **  run on dev:"
+        echo "  run_id       = $RUN_ID"
+        echo "  head_sha     = $HEAD_SHA"
+        echo "  short_sha    = $SHORT_SHA"
+        echo "  created_at   = $CREATED_AT"
+        echo "  title        = $DISPLAY_TITLE"
+        echo "  jobversion   = $JOBVERSION"
+        echo
+        echo "  latestversion= $LATEST_VERSION"
+        echo
+        echo "  version      = $VERSION"
+        echo "  dockertags   = $DOCKERTAGS"
+
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
+        echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
+
+        echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
+
+
+        echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
+        echo "~~~  " >> $GITHUB_STEP_SUMMARY
+        echo "          --- $RUN_CONCLUSION --- " >> $GITHUB_STEP_SUMMARY
+        echo "created_at:                ${CREATED_AT}" >> $GITHUB_STEP_SUMMARY
+        echo "short_sha:                 ${SHORT_SHA}" >> $GITHUB_STEP_SUMMARY
+        echo "Job version:               ${JOBVERSION}" >> $GITHUB_STEP_SUMMARY
+        echo "SHA:                       ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
+        echo "Run ID:                    ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
+
+        if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
+          echo "A ${DOCKERTAGS} változat már készen van."
+          exit 0
+
+        fi
+
+        echo "LET's TRIGGER!!!"
