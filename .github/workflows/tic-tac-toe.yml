@@ -37,8 +37,8 @@ jobs:
         env:
           DOCKERHUB_NAMESPACE: myorg     # hivatalos image-nél: library
           DOCKERHUB_REPO: myapp
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }} # privát repóhoz kötelező
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}       # privát repóhoz kötelező
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_READ_USERNAME }}      # privát repóhoz kötelező
+          DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_READ_TOKEN }}       # privát repóhoz kötelező
         run: |
 
           set -euo pipefail
