@@ -55,54 +55,58 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # SUMMARY 
+          # SUMMARY
+          #
+          # >> $GITHUB_OUTPUT | " GHOUT"
+          # >> $GITHUB_STEP_SUMMARY | " GHSS"
+          #
+          LASTLIST="$(gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name')"
+          VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
+          DOCKERTAGS="latest"
+
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo " - Legutóbbi kiadások:" | tee last-releases.txt
-          LAST_
-          gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | tee -a last-releases.txt
+          echo "${LASTLIST}" | tee -a last-releases.txt
           echo "------------------------------------------------------------" | tee -a last-releases.txt
           echo " - Ezekből a legfrissebb:" | tee -a last-releases.txt
-          gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | head -n 1 | tee -a last-releases.txt
+          echo "${LASTLIST}" | head -n 1 | tee -a last-releases.txt
           echo "------------------------------------------------------------" | tee -a last-releases.txt
+          echo " - Utolsó stabil kiadás:" | tee -a last-releases.txt
+          echo "${VERSION}" | head -n 1 | tee -a last-releases.txt
+          echo "------------------------------------------------------------" | tee -a last-releases.txt
+          echo "------------------------------------------------------------"
           cat last-releases.txt >> $GITHUB_STEP_SUMMARY
-          
-          if [ -n "${{ inputs.core_version }}" ]; then
-            VERSION="${{ inputs.core_version }}"
-            DOCKERTAGS="beta"
-          else
-            VERSION=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
-            VERSION=$(gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name' | head -n 1)
-            DOCKERTAGS="${{ env.EXTRA_TAGS }}"
-            if [[ "$VERSION" == *b* ]]; then
-              DOCKERTAGS="beta"
-            fi
+
+          if [ -z "${VERSION}" ]; then
+              echo "A VERSION üres vagy nincs beállítva."
+              exit 1
           fi
-      
+
           # BASE_IMAGE_VERSION lekérése a core builder.yml-ből az adott VERSION tag-ről
           BASE_IMAGE_VERSION=$(gh api "repos/home-assistant/core/contents/.github/workflows/builder.yml?ref=${VERSION}" \
             --jq '.content' | base64 -d | grep -oP 'BASE_IMAGE_VERSION:\s*"\K[^"]+')
-      
-          echo "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}" >> $GITHUB_OUTPUT
-      
+
+          echo "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}"
+
           # Dockerfile lekérése a home-assistant/docker repóból a BASE_IMAGE_VERSION alapján
           DOCKERFILE_CONTENT=$(gh api "repos/home-assistant/docker/contents/Dockerfile?ref=${BASE_IMAGE_VERSION}" \
             --jq '.content' | base64 -d)
-      
+
           # ARG BUILD_FROM sor és a végén levő verziószám kinyerése
           BUILD_FROM_LINE=$(echo "$DOCKERFILE_CONTENT" | grep '^ARG BUILD_FROM=' )
           BUILD_FROM_VERSION=$(echo "$BUILD_FROM_LINE" | sed 's/.*-//')
 
-          echo "Home Assistant Core: ${VERSION}"
+          echo "BASE_IMAGE_VERSION=${BASE_IMAGE_VERSION}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
           echo "dockerversion=${BASE_IMAGE_VERSION}" >> $GITHUB_OUTPUT
           echo "pythonversion=${BUILD_FROM_VERSION}" >> $GITHUB_OUTPUT
-      
+
           # SUMMARY
           echo "Home Assistant Core: ${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "tags=${DOCKERTAGS}" >> $GITHUB_STEP_SUMMARY
           echo "BASE_IMAGE_VERSION used for core build:           ${BASE_IMAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "Python version (docker-base) to build BASE_IMAGE: ${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY      
+          echo "Python version (docker-base) to build BASE_IMAGE: ${BUILD_FROM_VERSION}" >> $GITHUB_STEP_SUMMARY
 
       - name: Check if armv7 image already exists on GHCR
         id: check
