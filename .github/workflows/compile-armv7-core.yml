@@ -3,7 +3,7 @@ name: ARMV7-CORE-WHEELS
 on:
   push:
     branches:
-      - trigger-latest
+      - latest
       
   workflow_dispatch:
     inputs:
@@ -25,8 +25,6 @@ on:
         description: 'Sorok száma:'
         required: false
         default: "30"  
-  schedule:
-    - cron: "00 17 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
