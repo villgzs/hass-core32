@@ -22,7 +22,7 @@ env:
   THIS_REPO_PATH: hass-core32
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   actions: write
 
