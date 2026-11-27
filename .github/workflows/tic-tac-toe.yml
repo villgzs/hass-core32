@@ -255,6 +255,7 @@ jobs:
           TARGET_REPO: villgzs/hass-core32
           TARGET_BRANCH: dev
           TARGET_FILE: trigger.txt
+          GH_TOKEN: ${{ github.token }}
       if: steps.matching.outputs.trigger-update-dev=='true'
       run: |
           set -euo pipefail
