@@ -68,6 +68,7 @@ jobs:
         done
 
         TARGET_TAGS=("latest" "dev" "beta")
+        declare -A DONE_TAGS
 
         for tag in "${TARGET_TAGS[@]}"; do
           digest=$(echo "${ALL_TAGS}" | jq -r --arg t "${tag}" '
@@ -101,7 +102,8 @@ jobs:
           echo "${matching_tags:-<nincs találat>}"
           matchtag="$(echo "${matching_tags}" | head -n 1 )"
           echo "${matchtag#*-}"
+          DONE_TAGS["${tag}"]="${matchtag}"
           echo "done_${tag}=${matchtag}"
           echo "done_${tag}=${matchtag}" >> $GITHUB_OUTPUT
-          echo "done_${tag}=${matchtag}" >> $GITHUB_STEP_SUMMARY
+          echo "done_${tag}=${matchtag}" >> $GITHUB_STEP_SUMMARY          
         done
