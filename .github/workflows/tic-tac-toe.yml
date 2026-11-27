@@ -40,6 +40,7 @@ jobs:
         DOCKERHUB_REPO: armv7-homeassistant
         DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_READ_USERNAME }}      # privát repóhoz kötelező
         DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_READ_TOKEN }}       # privát repóhoz kötelező
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -euo pipefail
         echo "login..."
