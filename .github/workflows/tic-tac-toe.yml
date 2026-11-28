@@ -1,0 +1,348 @@
+# ┌─┬─┬─┐
+# │X│ │ │
+# ├─┼─┼─┤
+# │ │X│ │
+# ├─┼─┼─┤
+# │O│ │O│
+# └─┴─┴─┘
+name: TIC-TAC-TOE
+on:
+  push:
+    branches:
+      - tic-tac-toe
+      
+  workflow_dispatch:  
+    inputs:
+      testinput:        
+        description: "trigger directly:"
+        type: boolean
+        default: false
+        required: false        
+        
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true    
+
+env:
+  THIS_REPO: villgzs/hass-core32
+  THIS_REPO_PATH: hass-core32
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
+jobs:
+  call-time-workflow:  
+    uses: villgzs/villgzs/.github/workflows/get-time.yml@main   # ← helyi reusable workflow
+
+  find-matching-tags:
+    runs-on: ubuntu-slim
+    outputs:
+      version: ${{steps.matching.outputs.version}}
+      tags: ${{steps.matching.outputs.tags}}
+      sha: ${{steps.matching.outputs.sha}}
+      run_id: ${{steps.matching.outputs.run_id}}
+      trigger-update-dev: ${{steps.matching.outputs.trigger-update-dev}}
+      i_am_alone: ${{ steps.in_progress.outputs.i_am_alone }}
+    steps:
+    - name: Query Docker Hub tags matching latest
+      id: matching
+      env:
+        DOCKERHUB_NAMESPACE: dockergzs     # hivatalos image-nél: library
+        DOCKERHUB_REPO: armv7-homeassistant
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_READ_USERNAME }}      # privát repóhoz kötelező
+        DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_READ_TOKEN }}       # privát repóhoz kötelező
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}      
+      run: |
+        set -euo pipefail
+        echo "login..."
+
+        printf '%s' "${DOCKERHUB_TOKEN}" | wc -c
+
+        AUTH_HEADER=()
+        if [[ -n "${DOCKERHUB_USERNAME:-}" && -n "${DOCKERHUB_TOKEN:-}" ]]; then
+          TOKEN=$(curl -fsSL -X POST "https://hub.docker.com/v2/users/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_TOKEN}\"}" \
+            | jq -r '.token')
+          AUTH_HEADER=(-H "Authorization: JWT ${TOKEN}")
+          echo "Authorization: OK"
+        fi
+
+        echo "Getting tags..."
+        URL="https://hub.docker.com/v2/repositories/${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPO}/tags?page_size=100"
+        ALL_TAGS="[]"
+
+        while [[ -n "${URL}" && "${URL}" != "null" ]]; do
+          RESP=$(curl -fsSL "${AUTH_HEADER[@]+"${AUTH_HEADER[@]}"}" "${URL}")
+          PAGE_ITEMS=$(echo "${RESP}" | jq '.results')
+          ALL_TAGS=$(jq -s '.[0] + .[1]' <(echo "${ALL_TAGS}") <(echo "${PAGE_ITEMS}"))
+          URL=$(echo "${RESP}" | jq -r '.next')
+          echo "Get done."
+        done
+
+        TARGET_TAGS=("latest" "dev" "beta")
+        declare -A DONE_TAGS
+
+        for tag in "${TARGET_TAGS[@]}"; do
+          digest=$(echo "${ALL_TAGS}" | jq -r --arg t "${tag}" '
+            map(select(.name == $t))
+            | first
+            | (.digest // .images[0].digest // empty)
+          ')
+
+          if [[ -z "${digest}" ]]; then
+            echo "::warning:: '$' tag or digest not found, skipping." >&2
+            continue
+          fi
+
+          matching_tags=$(echo "${ALL_TAGS}" | jq -r --arg t "${tag}" --arg d "${digest}" '
+            [
+              .[]
+              | select(.name != $t)
+              | select(
+                  (.digest == $d)
+                  or ([.images[]?.digest] | index($d) != null)
+                )
+              | .name
+            ]
+            | unique
+            | .[]
+          ')
+
+          echo "=== ${tag} ==="
+          echo "Digest: ${digest}"
+          echo "Tags with the same release:"
+          echo "${matching_tags:-<No results found.>}"
+          matchtag="$(echo "${matching_tags}" | head -n 1 )"
+          echo "${matchtag#*-}"
+          DONE_TAGS["${tag}"]="${matchtag}"
+          echo "done_${tag}=${matchtag}"
+          echo "done_${tag}=${matchtag}" >> $GITHUB_OUTPUT
+          echo "done_${tag}=${matchtag}" >> $GITHUB_STEP_SUMMARY
+        done
+
+        ###########################################################################################################
+
+        LASTLIST="$(gh api repos/home-assistant/core/releases --jq '.[0:10] | .[].tag_name')"
+        LASTRELEASE=$(echo "${LASTLIST}" | head -n 1 )
+        LAST_STABLE=$(gh api repos/home-assistant/core/releases/latest --jq '.tag_name')
+
+        # A legutóbbi futás a builder.yml workflow-ból
+        RUN_JSON=$(gh api "/repos/home-assistant/core/actions/workflows/builder.yml/runs?status=completed&per_page=5" \
+          --jq '.workflow_runs[0]')
+
+        if [ -z "$RUN_JSON" ] || [ "$RUN_JSON" = "null" ]; then
+          echo "::error::No successful Build images run was found."
+          exit 1
+        fi
+
+        RUN_ID=$(echo "$RUN_JSON" | jq -r '.id')
+        HEAD_SHA=$(echo "$RUN_JSON" | jq -r '.head_sha')
+        # A dev buildnél a verzió tipikusan nightly formátumú (pl. 2026.10.0.dev0)
+        # A head_sha rövid formáját és a dátumot használjuk a taghez
+        SHORT_SHA=$(echo "$HEAD_SHA" | cut -c1-7)
+        # Próbáljuk kiolvasni a display_title-ból vagy a head_branch-ből
+        DISPLAY_TITLE=$(echo "$RUN_JSON" | jq -r '.display_title // empty')
+        CREATED_AT=$(echo "$RUN_JSON" | jq -r '.created_at' | cut -dT -f1)
+        CHECK_SUITE_ID=$(echo "$RUN_JSON" | jq -r '.check_suite_id')
+        RUN_CONCLUSION=$(echo "$RUN_JSON" | jq -r '.conclusion')
+
+        JOBVERSION=""
+        TMPDIR=$(mktemp -d)
+        echo "- tempdir: $TMPDIR"
+        LOG_ZIP="${TMPDIR}/suite-logs.zip"
+
+        # Fallback 1: teljes run log (API) - sikeres home-Assistant futásoknál ez működött, de a sikertelennél nem adott eredményt
+        if [ -z "$JOBVERSION" ]; then
+          echo "Fallback 1: Trying the /actions/runs/.../logs endpoint..."
+          if gh api \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/home-assistant/core/actions/runs/${RUN_ID}/logs" \
+                > "$LOG_ZIP" 2>/dev/null; then
+            echo "Fallback 1: Download completed. Extracting..."
+            unzip -q -o "$LOG_ZIP" -d "$TMPDIR" || true
+            # ls -las "$TMPDIR"
+            PUBLISH_LOG=$(find "$TMPDIR" -type f -iname '*Publish*home-assistant*.txt' | head -1)
+            echo "$PUBLISH_LOG"
+            if [ -n "$PUBLISH_LOG" ]; then
+              JOBVERSION=$(grep -oE 'DOCKER_METADATA_OUTPUT_VERSION:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9]+)?' "$PUBLISH_LOG" \
+                            | head -1 \
+                            | sed -E 's/DOCKER_METADATA_OUTPUT_VERSION:[[:space:]]*//' \
+                            || true)
+            fi
+            echo "Fallback 1: result - JOBVERSION = $JOBVERSION"
+          else
+            echo "::warning::Fallback 1 API request failed."
+          fi
+        fi
+
+        echo "Found $RUN_CONCLUSION run on dev:"
+        echo "  run_id          = $RUN_ID"
+        echo "  check_suite_id  = $CHECK_SUITE_ID"
+        echo "  head_sha        = $HEAD_SHA"
+        echo "  short_sha       = $SHORT_SHA"
+        echo "  created_at      = $CREATED_AT"
+        echo "  title           = $DISPLAY_TITLE"
+        echo
+
+        LATEST_VERSION=${LASTRELEASE}
+        echo "${LATEST_VERSION}"
+        echo
+        BETA_VERSION=${DISPLAY_TITLE##*b}
+        echo "Beta: ${BETA_VERSION}"
+        echo
+
+        if [[ "${DISPLAY_TITLE}" == "Build images" ]]; then
+
+            echo "It is a dev run."
+            DOCKERTAGS="dev"
+            VERSION="${JOBVERSION}"
+
+        else
+
+          if [[ "${DISPLAY_TITLE}" == "${LATEST_VERSION}" ]]; then
+
+            echo "Jobversion is the LATEST version!"
+            VERSION="${LATEST_VERSION}"
+
+            if [[ "${DISPLAY_TITLE}" == *b* ]]; then
+              echo "It is a BETA version. Beta = ${BETA_VERSION}"
+              DOCKERTAGS="beta"
+            else
+              echo "It is a STABLE version."
+              DOCKERTAGS="latest"
+            fi
+
+          else
+            echo "Probably this was a test?"
+            DOCKERTAGS="test"
+            VERSION="${JOBVERSION}"
+          fi
+
+        fi
+
+        echo
+        echo "Found ** ${RUN_CONCLUSION} **  run on dev:"
+        echo "  run_id       = $RUN_ID"
+        echo "  head_sha     = $HEAD_SHA"
+        echo "  short_sha    = $SHORT_SHA"
+        echo "  created_at   = $CREATED_AT"
+        echo "  title        = $DISPLAY_TITLE"
+        echo "  jobversion   = $JOBVERSION"
+        echo
+        echo "  latestversion= $LATEST_VERSION"
+        echo
+        echo "  version      = $VERSION"
+        echo "  dockertags   = $DOCKERTAGS"
+
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "tags=${DOCKERTAGS}" >> $GITHUB_OUTPUT
+        echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
+
+        echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
+
+        echo "SUMMARY"
+        echo "Home Assistant Core (dev): ${VERSION}" >> $GITHUB_STEP_SUMMARY
+        echo "~~~  " >> $GITHUB_STEP_SUMMARY
+        echo "          --- $RUN_CONCLUSION --- " >> $GITHUB_STEP_SUMMARY
+        echo "created_at:                ${CREATED_AT}" >> $GITHUB_STEP_SUMMARY
+        echo "short_sha:                 ${SHORT_SHA}" >> $GITHUB_STEP_SUMMARY
+        echo "Job version:               ${JOBVERSION}" >> $GITHUB_STEP_SUMMARY
+        echo "SHA:                       ${HEAD_SHA}" >> $GITHUB_STEP_SUMMARY
+        echo "Run ID:                    ${RUN_ID}" >> $GITHUB_STEP_SUMMARY
+
+        echo "TRIGGER ?"
+        if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
+          echo "The ${DOCKERTAGS} variant is already available."
+          echo "${DOCKERTAGS} / ${VERSION} : Already done." >> $GITHUB_STEP_SUMMARY
+          echo "trigger-update-dev=${{ inputs.testinput }}" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.testinput }}" == "true" ]]; then
+            echo "Directly triggered..." >> $GITHUB_STEP_SUMMARY
+          fi
+          exit 0
+
+        fi
+
+        echo "LET's TRIGGER!!!"
+        echo "${DOCKERTAGS} / ${VERSION} : Build required." >> $GITHUB_STEP_SUMMARY
+        echo "trigger-update-dev=true" >> $GITHUB_OUTPUT
+
+    - name: Check if another workflow is running
+      id: in_progress
+      env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      run: |
+          RUNNING_COUNT=$(gh run list\
+              --repo ${{ env.THIS_REPO }}\
+              --status in_progress\
+              --json databaseId,workflowName,headBranch,url,createdAt |\
+              jq 'length')
+          echo "### Checking for other process "
+          echo "- Numbers of running workflow: $RUNNING_COUNT"
+
+          {
+          echo "### Checking for other process. "
+          echo "- Numbers of running workflow: $RUNNING_COUNT"
+          if [ "$RUNNING_COUNT" -gt 1 ]; then
+              echo "- There is another running process."
+              RESULT="false"
+          else
+              echo "- Is it true? I am running alone."
+              RESULT="true"
+          fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "i_am_alone=${RESULT}" >> "$GITHUB_OUTPUT"
+
+    - name: Update orphan trigger-dev branch in villgzs/hass-core32 - dev
+      env:
+          TARGET_TOKEN: ${{ secrets.UPDATE_HASS_CORE32 }}
+          TARGET_REPO: villgzs/hass-core32
+          TARGET_BRANCH: dev
+          TARGET_FILE: trigger.txt
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      if: |
+        steps.matching.outputs.trigger-update-dev=='true' &&
+        steps.in_progress.outputs.i_am_alone=='true'
+      run: |
+          set -euo pipefail
+
+          WORK_DIR="$(mktemp -d)"
+          trap 'rm -rf "$WORK_DIR"' EXIT
+
+          cd "$WORK_DIR"
+          git init
+          git remote add origin "https://x-access-token:${TARGET_TOKEN}@github.com/${TARGET_REPO}.git"
+
+          # Main branch letöltése
+          git fetch origin main
+
+          # Új, előzmények nélküli branch létrehozása a main tartalmával
+          git checkout --orphan "$TARGET_BRANCH" origin/main
+
+          # A trigger fájl létrehozása
+          printf 'triggered_at=%s\nsource_repo=%s\nrun_id=%s\n' \
+              "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              "${{ github.repository }}" \
+              "${{ github.run_id }}" > "$TARGET_FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # A main teljes tartalmának és a trigger fájlnak a hozzáadása
+          git add -A
+          git commit -m "bot: start"
+
+          # Force push → a régi history teljesen eltűnik
+          git push --force origin "HEAD:${TARGET_BRANCH}"
+
+          echo "### Orphan branch refreshed for trigger" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: main" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target: \`${TARGET_REPO}\` → \`${TARGET_BRANCH}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- File: \`${TARGET_FILE}\`" >> "$GITHUB_STEP_SUMMARY"
+        

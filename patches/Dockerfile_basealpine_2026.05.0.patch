@@ -1,0 +1,38 @@
+--- a/alpine/Dockerfile
++++ b/alpine/Dockerfile
+@@ -52,6 +52,7 @@
+ 
+ # Sanity check for later steps
+ ARG TARGETARCH
++ARG TARGETVARIANT
+ RUN \
+     if [ -z "${TARGETARCH}" ]; then \
+         echo "TARGETARCH is not set, please use Docker BuildKit for the build." && exit 1; \
+@@ -98,6 +99,18 @@
+             S6_OVERLAY_ARCH="${S6_OVERLAY_ARCH:-aarch64}" \
+             TEMPIO_ARCH="${TEMPIO_ARCH:-aarch64}" \
+             ;; \
++        arm) \
++            case "${TARGETVARIANT}" in \
++                v7) \
++                    S6_OVERLAY_ARCH="${S6_OVERLAY_ARCH:-arm}" \
++                    TEMPIO_ARCH="${TEMPIO_ARCH:-armv7}" \
++                    ;; \
++                v6) \
++                    S6_OVERLAY_ARCH="${S6_OVERLAY_ARCH:-arm}" \
++                    TEMPIO_ARCH="${TEMPIO_ARCH:-armhf}" \
++                    ;; \
++            esac \
++            ;; \
+     esac \
+     && echo "Selected from TARGETARCH=${TARGETARCH} arch-specific" \
+         " S6_OVERLAY_ARCH=${S6_OVERLAY_ARCH:=${TARGETARCH}}" \
+@@ -133,7 +146,7 @@
+ # Set shell
+ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+ 
+-ARG EXTRA_INDEX_URL=https://wheels.home-assistant.io/musllinux-index/
++ARG EXTRA_INDEX_URL=https://villgzs.github.io/musllinux-index/
+ 
+ # Default env for S6 and Python/uv
+ ENV \
