@@ -94,7 +94,7 @@ jobs:
           ')
 
           if [[ -z "${digest}" ]]; then
-            echo "Figyelmeztetés: nem található '${tag}' tag vagy digest, kihagyva." >&2
+            echo "::warning:: '$' tag or digest not found, skipping." >&2
             continue
           fi
 
@@ -114,8 +114,8 @@ jobs:
 
           echo "=== ${tag} ==="
           echo "Digest: ${digest}"
-          echo "Azonos kiadású tagek:"
-          echo "${matching_tags:-<nincs találat>}"
+          echo "Tags with the same release:"
+          echo "${matching_tags:-<No results found.>}"
           matchtag="$(echo "${matching_tags}" | head -n 1 )"
           echo "${matchtag#*-}"
           DONE_TAGS["${tag}"]="${matchtag}"
@@ -135,7 +135,7 @@ jobs:
           --jq '.workflow_runs[0]')
 
         if [ -z "$RUN_JSON" ] || [ "$RUN_JSON" = "null" ]; then
-          echo "::error::Nem találtam sikeres Build images futást"
+          echo "::error::No successful Build images run was found."
           exit 1
         fi
 
@@ -157,12 +157,12 @@ jobs:
 
         # Fallback 1: teljes run log (API) - sikeres home-Assistant futásoknál ez működött, de a sikertelennél nem adott eredményt
         if [ -z "$JOBVERSION" ]; then
-          echo "Fallback 1: Próbálom a /actions/runs/.../logs endpointot..."
+          echo "Fallback 1: Trying the /actions/runs/.../logs endpoint..."
           if gh api \
                 -H "Accept: application/vnd.github+json" \
                 "/repos/home-assistant/core/actions/runs/${RUN_ID}/logs" \
                 > "$LOG_ZIP" 2>/dev/null; then
-            echo "Fallback 1: Lekérés megtörtént. Kicsomagolás..."
+            echo "Fallback 1: Download completed. Extracting..."
             unzip -q -o "$LOG_ZIP" -d "$TMPDIR" || true
             # ls -las "$TMPDIR"
             PUBLISH_LOG=$(find "$TMPDIR" -type f -iname '*Publish*home-assistant*.txt' | head -1)
@@ -173,9 +173,9 @@ jobs:
                             | sed -E 's/DOCKER_METADATA_OUTPUT_VERSION:[[:space:]]*//' \
                             || true)
             fi
-            echo "Fallback 1: lekérés eredménye - JOBVERSION = $JOBVERSION"
+            echo "Fallback 1: result - JOBVERSION = $JOBVERSION"
           else
-            echo "::warning::Fallback 1 API lekérés sikertelen volt."
+            echo "::warning::Fallback 1 API request failed."
           fi
         fi
 
@@ -256,7 +256,7 @@ jobs:
 
         echo "TRIGGER ?"
         if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
-          echo "A ${DOCKERTAGS} változat már készen van."
+          echo "The ${DOCKERTAGS} variant is already available."
           echo "${DOCKERTAGS} / ${VERSION} : Already done." >> $GITHUB_STEP_SUMMARY
           echo "trigger-update-dev=${{ inputs.testinput }}" >> $GITHUB_OUTPUT
           if [[ "${{ inputs.testinput }}" == "true" ]]; then
@@ -281,17 +281,17 @@ jobs:
               --status in_progress\
               --json databaseId,workflowName,headBranch,url,createdAt |\
               jq 'length')
-          echo "### Workflow futások ellenőrzése "
-          echo "- Futások száma: $RUNNING_COUNT"
+          echo "### Checking for other process "
+          echo "- Numbers of running workflow: $RUNNING_COUNT"
 
           {
-          echo "### Workflow futások ellenőrzése. "
-          echo "- Futások száma: $RUNNING_COUNT"
+          echo "### Checking for other process. "
+          echo "- Numbers of running workflow: $RUNNING_COUNT"
           if [ "$RUNNING_COUNT" -gt 1 ]; then
-              echo "- Van másik futás."
+              echo "- There is another running process."
               RESULT="false"
           else
-              echo "- Csak egyedüliként fut a workflow fájl."
+              echo "- Is it true? I am running alone."
               RESULT="true"
           fi
           } >> "$GITHUB_STEP_SUMMARY"
@@ -341,8 +341,8 @@ jobs:
           # Force push → a régi history teljesen eltűnik
           git push --force origin "HEAD:${TARGET_BRANCH}"
 
-          echo "### Orphan trigger branch frissítve" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Forrás: main" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Cél: \`${TARGET_REPO}\` → \`${TARGET_BRANCH}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Fájl: \`${TARGET_FILE}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Orphan branch refreshed for trigger" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: main" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target: \`${TARGET_REPO}\` → \`${TARGET_BRANCH}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- File: \`${TARGET_FILE}\`" >> "$GITHUB_STEP_SUMMARY"
         
