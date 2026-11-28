@@ -38,6 +38,7 @@ jobs:
       sha: ${{steps.matching.outputs.sha}}
       run_id: ${{steps.matching.outputs.run_id}}
       trigger-update-dev: ${{steps.matching.outputs.trigger-update-dev}}
+      i_am_alone: ${{ steps.in_progress.outputs.i_am_alone }}
     steps:
     - name: Query Docker Hub tags matching latest
       id: matching
@@ -259,6 +260,34 @@ jobs:
         echo "${DOCKERTAGS} / ${VERSION} : Build required." >> $GITHUB_STEP_SUMMARY
         echo "trigger-update-dev=true" >> $GITHUB_OUTPUT
 
+    - name: Check if another workflow is running
+      id: in_progress
+      env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      run: |
+          RUNNING_COUNT=$(gh run list\
+              --repo ${{ env.THIS_REPO }}\
+              --status in_progress\
+              --json databaseId,workflowName,headBranch,url,createdAt |\
+              jq 'length')
+          echo "### Workflow futások ellenőrzése "
+          echo "- Futások száma: $RUNNING_COUNT"
+
+          {
+          echo "### Workflow futások ellenőrzése. "
+          echo "- Futások száma: $RUNNING_COUNT"
+          if [ "$RUNNING_COUNT" -gt 1 ]; then
+              echo "- Van másik futás."
+              RESULT="false"
+          else
+              echo "- Csak egyedüliként fut a workflow fájl."
+              RESULT="true"
+          fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "i_am_alone=${RESULT}" >> "$GITHUB_OUTPUT"
+
     - name: Update orphan trigger-dev branch in villgzs/hass-core32 - dev
       env:
           TARGET_TOKEN: ${{ secrets.UPDATE_HASS_CORE32 }}
@@ -267,7 +296,9 @@ jobs:
           TARGET_FILE: trigger.txt
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-      if: steps.matching.outputs.trigger-update-dev=='true'
+      if: |
+        steps.matching.outputs.trigger-update-dev=='true' &&
+        steps.in_progress.outputs.i_am_alone=='true'
       run: |
           set -euo pipefail
 
