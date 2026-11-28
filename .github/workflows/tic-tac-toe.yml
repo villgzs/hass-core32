@@ -11,7 +11,14 @@ on:
     branches:
       - tic-tac-toe
       
-  workflow_dispatch:      
+  workflow_dispatch:  
+    inputs:
+      testinput:        
+        description: "trigger directly:"
+        type: boolean
+        default: false
+        required: false        
+        
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -251,7 +258,10 @@ jobs:
         if [[ "${DONE_TAGS[${DOCKERTAGS}]}" == "${VERSION}" ]]; then
           echo "A ${DOCKERTAGS} változat már készen van."
           echo "${DOCKERTAGS} / ${VERSION} : Already done." >> $GITHUB_STEP_SUMMARY
-          echo "trigger-update-dev=false" >> $GITHUB_OUTPUT
+          echo "trigger-update-dev=${{ inputs.testinput }}" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.testinput }}" == "true" ]]; then
+            echo "Directly triggered..." >> $GITHUB_STEP_SUMMARY
+          fi
           exit 0
 
         fi
